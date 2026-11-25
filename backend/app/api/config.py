@@ -1,13 +1,17 @@
-"""config 分组：模型/向量/快捷键配置（写回 .env）、套餐额度、连接测试。"""
+"""config 分组：模型/向量/快捷键配置（写回 .env）、档位额度、连接测试。
+
+授权相关的写操作都在 /api/license，这里只读。
+"""
 from __future__ import annotations
 
 import asyncio
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
+from .. import access, license
 from ..config import settings
 from ..db import models as meta
 from ..llm import client
@@ -42,10 +46,6 @@ class ConfigIn(BaseModel):
     hotkey: str | None = None
 
 
-class PlanIn(BaseModel):
-    plan: str  # free | pro
-
-
 @router.get("", summary="当前配置")
 def get_config():
     return {
@@ -62,12 +62,9 @@ def get_config():
         "data_dir": str(settings.data_path),
         "providers": client.PROVIDERS,
         "plan": meta.plan_info(),
-        "limits": {"free": settings.free_task_limit, "pro": settings.pro_task_limit},
-        "scheduler": {
-            "enabled": settings.scheduler_enabled,
-            "interval": settings.scheduler_interval,
-            "alive": runner.alive,
-        },
+        "license": license.info(),
+        "limits": {"free": access.LIMITS["free"], "pro": access.LIMITS["pro"]},
+        "scheduler": {**runner.status(), "enabled": settings.scheduler_enabled},
     }
 
 
@@ -101,17 +98,9 @@ def providers():
     return client.PROVIDERS
 
 
-@router.get("/plan", summary="当前套餐与任务额度")
+@router.get("/plan", summary="当前档位与任务额度（只读）")
 def plan():
     return meta.plan_info()
-
-
-@router.put("/plan", summary="切换套餐（本地开关，无支付）")
-def set_plan(body: PlanIn):
-    plan_name = body.plan.lower()
-    if plan_name not in ("free", "pro"):
-        raise HTTPException(400, "plan 只能是 free 或 pro")
-    return meta.set_plan(plan_name)
 
 
 @router.post("/test", summary="测试模型连接")
