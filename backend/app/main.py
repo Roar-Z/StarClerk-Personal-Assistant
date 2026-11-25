@@ -12,10 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import access, license
+from . import access, fault, license
 from .api import routers
-from .config import settings
-from .db import models as meta
+from .config import APP_VERSION, settings
 from .db.sqlite import init_db
 from .log import setup as setup_log
 from .notify import notifier
@@ -45,7 +44,7 @@ async def lifespan(_: FastAPI):
     log.info("StarClerk 已停止")
 
 
-app = FastAPI(title="StarClerk", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="StarClerk", version=APP_VERSION, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"http://(127\.0\.0\.1|localhost)(:\d+)?",
@@ -78,13 +77,12 @@ async def guard_local(request: Request, call_next):
 
 @app.exception_handler(Exception)
 async def unhandled(request: Request, exc: Exception):
-    """兜底：没被接口捕获的异常也要进日志和 errors 表，前端拿可读提示。"""
-    log.exception("未捕获异常 %s %s", request.method, request.url.path)
-    try:
-        meta.add_error("api", f"{request.url.path}: {type(exc).__name__}: {exc}")
-    except Exception:  # noqa: BLE001
-        log.debug("异常入库失败", exc_info=True)
-    return JSONResponse({"detail": "服务内部错误，请查看日志"}, status_code=500)
+    """兜底：没被接口接住的异常也走 fault，日志、errors 表、弹窗一次到位。"""
+    msg = fault.report("api", exc, title="服务异常")
+    return JSONResponse(
+        {"detail": f"{msg}（{request.method} {request.url.path}）"},
+        status_code=500,
+    )
 
 
 @app.get("/api/events")
