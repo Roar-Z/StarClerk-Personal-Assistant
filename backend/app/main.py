@@ -1,0 +1,115 @@
+"""FastAPI 应用入口：六个业务分组 + 生命周期 + 全局异常兜底 + 仅本机访问。"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import time
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+
+from .api import routers
+from .config import settings
+from .db import models as meta
+from .db.sqlite import init_db
+from .notify import notifier
+from .tasks.scheduler import runner
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("main")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    notifier.bind_loop(asyncio.get_running_loop())
+    # 巡检跑在独立子线程里，不占事件循环；关闭时 join，避免半截任务
+    if settings.scheduler_enabled:
+        runner.start()
+    log.info("StarClerk 就绪：http://%s:%s", settings.app_host, settings.app_port)
+    yield
+    runner.stop()
+    log.info("StarClerk 已停止")
+
+
+app = FastAPI(title="StarClerk", version="0.1.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://(127\.0\.0\.1|localhost)(:\d+)?",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+for r in routers:
+    app.include_router(r, prefix="/api")
+
+# 只服务本机（打包后窗口/托盘都是 127.0.0.1）
+_LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+
+
+@app.middleware("http")
+async def guard_local(request: Request, call_next):
+    host = (request.client.host if request.client else "") or ""
+    if host.replace("::ffff:", "") not in _LOOPBACK:
+        return JSONResponse({"detail": "仅允许本机访问"}, status_code=403)
+    started = time.perf_counter()
+    response = await call_next(request)
+    cost = (time.perf_counter() - started) * 1000
+    if cost > 5000 and request.url.path != "/api/events":
+        log.warning("慢请求 %s %s %.0fms", request.method, request.url.path, cost)
+    return response
+
+
+@app.exception_handler(Exception)
+async def unhandled(request: Request, exc: Exception):
+    """兜底：没被接口捕获的异常也要进日志和 errors 表，前端拿可读提示。"""
+    log.exception("未捕获异常 %s %s", request.method, request.url.path)
+    try:
+        meta.add_error("api", f"{request.url.path}: {type(exc).__name__}: {exc}")
+    except Exception:  # noqa: BLE001
+        log.debug("异常入库失败", exc_info=True)
+    return JSONResponse({"detail": "服务内部错误，请查看日志"}, status_code=500)
+
+
+@app.get("/api/events")
+async def events():
+    """SSE：巡检提醒/结果实时推到前端。"""
+    q = notifier.subscribe()
+
+    async def gen():
+        try:
+            while True:
+                ev = await q.get()
+                yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+        finally:
+            notifier.unsubscribe(q)
+
+    return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/api/health")
+def health():
+    return {
+        "ok": True,
+        "version": app.version,
+        "scheduler": runner.alive,
+        "plan": meta.plan_info()["plan"],
+    }
+
+
+# ---- 前端静态资源（打包后由同一进程提供，避免 5173 端口依赖）----
+_static = settings.static_path
+if (_static / "index.html").exists():
+    if (_static / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=_static / "assets"), name="assets")
+
+    @app.get("/{path:path}")
+    def spa(path: str):
+        target = _static / path
+        if path and target.is_file():
+            return FileResponse(target)
+        return FileResponse(_static / "index.html")
