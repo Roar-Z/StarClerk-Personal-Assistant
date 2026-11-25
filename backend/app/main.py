@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import access, license
 from .api import routers
 from .config import settings
 from .db import models as meta
@@ -31,7 +32,14 @@ async def lifespan(_: FastAPI):
     # 巡检跑在独立子线程里，不占事件循环；关闭时 join，避免半截任务
     if settings.scheduler_enabled:
         runner.start()
-    log.info("StarClerk 就绪：http://%s:%s", settings.app_host, settings.app_port)
+    info = license.info()
+    log.info(
+        "StarClerk 就绪：http://%s:%s（%s，并发上限 %s）",
+        settings.app_host,
+        settings.app_port,
+        info["label"],
+        info["max_concurrency"],
+    )
     yield
     runner.stop()
     log.info("StarClerk 已停止")
@@ -44,6 +52,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 三档权限：按路径查表，越权在进路由之前就被挡回去
+app.middleware("http")(access.guard)
 
 for r in routers:
     app.include_router(r, prefix="/api")
@@ -94,11 +105,13 @@ async def events():
 
 @app.get("/api/health")
 def health():
+    info = license.info()
     return {
         "ok": True,
         "version": app.version,
         "scheduler": runner.alive,
-        "plan": meta.plan_info()["plan"],
+        "plan": info["tier"],
+        "perf_mode": info["perf_mode"],
     }
 
 
