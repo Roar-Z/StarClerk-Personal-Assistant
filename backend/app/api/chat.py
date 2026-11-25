@@ -2,7 +2,7 @@
 
 普通问答走 Agent 图，能检索、能调工具、会顺手写记忆；
 流式那条路图跑不动，就自己拼上下文直接问模型，速度快点但没有工具。
-游客的会话只放内存，导出和列表都被中间件按档位挡住。
+未登录的会话只放内存，导出和列表都被中间件按档位挡住。
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ class OcrIn(BaseModel):
     hint: str = ""
 
 
-# 游客的上下文只放在进程里，关掉程序就没了，正好对上“对话不保存”这句承诺
+# 未登录的上下文只放在进程里，关掉程序就没了，正好对上“对话不保存”这句承诺
 _guest_hist: dict[str, list[dict[str, str]]] = {}
 _guest_seq = 0
 
@@ -200,7 +200,7 @@ def ocr_image(body: OcrIn):
         raise HTTPException(400, "图片格式不对，要 data:image/... 开头的 base64")
     if len(img) > 8 * 1024 * 1024:
         raise HTTPException(400, "图片太大了，压缩一下再传")
-    # 认字也是一次模型调用，游客照样占额度，不然就成免费 OCR 了
+    # 认字也是一次模型调用，未登录照样占额度，不然就成免费 OCR 了
     guest = license.is_guest()
     if guest:
         quota.check()
@@ -231,14 +231,14 @@ def ocr_image(body: OcrIn):
 
 
 # ---------------- 会话 ----------------
-@router.get("/sessions", summary="会话列表 / 搜索（免费版起）")
+@router.get("/sessions", summary="会话列表 / 搜索（登录后可用）")
 def list_sessions(limit: int = 50, q: str = ""):
     if q.strip():
         return models.search_sessions(q.strip(), max(1, min(limit, 200)))
     return sessions.list_all(max(1, min(limit, 200)))
 
 
-@router.post("/sessions", summary="新建会话（免费版起）")
+@router.post("/sessions", summary="新建会话（登录后可用）")
 def create_session(body: SessionIn):
     return sessions.create(body.title or "新对话")
 

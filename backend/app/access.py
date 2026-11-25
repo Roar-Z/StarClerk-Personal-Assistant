@@ -14,8 +14,8 @@ from . import license
 # 功能 → 最低档位
 FEATURES: dict[str, str] = {
     "chat": "guest",  # 对话、临时会话消息
-    "model": "guest",  # 读模型配置，游客也能看（但只能看免费模型那条）
-    "model_write": "free",  # 改模型 / 测试连接 / 重建索引要激活后才给
+    "model": "guest",  # 读模型配置，未登录也能看（但只能看免费模型那条）
+    "model_write": "free",  # 改模型 / 测试连接 / 重建索引要登录后才能用
     "session": "free",  # 会话列表 / 新建 / 删除
     "export": "free",  # 导出 Markdown
     "tasks": "free",  # 托管巡检
@@ -46,7 +46,7 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("*", "/api/events", "chat"),
     ("GET", "/api/chat/export", "export"),
     ("*", "/api/stats/usage/detail", "usage_detail"),
-    ("GET", "/api/chat/sessions/", "chat"),  # 单个会话的消息，游客也能读内存里的
+    ("GET", "/api/chat/sessions/", "chat"),  # 单个会话的消息，未登录也能读内存里的
     ("*", "/api/chat/sessions", "session"),
     ("*", "/api/chat", "chat"),
     ("*", "/api/mindmap", "mindmap"),
@@ -69,12 +69,12 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("*", "/api/rag/batch", "batch"),
     ("*", "/api/rag", "rag"),
     ("*", "/api/stats", "usage"),
-    # 写配置的三个口子单独拎出来，游客只能 GET 看看当前用的是哪个模型
+    # 写配置的三个口子单独拎出来，未登录只能 GET 看看当前用的是哪个模型
     ("POST", "/api/config/test", "model_write"),
     ("POST", "/api/config/rebuild-vector", "model_write"),
     ("PUT", "/api/config", "model_write"),
     ("*", "/api/config", "model"),
-    ("*", "/api/system", "model"),  # 版本/日志/自启属于本机维护，游客也能看
+    ("*", "/api/system", "model"),  # 版本/日志/自启属于本机维护，未登录也能看
 )
 
 # 各档位的数量上限，超出就 409，别让一个免费用户塞满向量库
@@ -112,7 +112,7 @@ def require(feature: str) -> None:
     """接口内部再确认一次，主要给额度相关的分支用。"""
     if allowed(feature):
         return
-    raise HTTPException(403, "未登录用不了这个功能，到「模型 → 授权」里免费激活")
+    raise HTTPException(403, "未登录用不了这个功能，到「模型」页登录")
 
 
 def check_limit(kind: str, used: int) -> None:
@@ -131,7 +131,7 @@ async def guard(request: Request, call_next):
             need = FEATURES.get(feature, "free")
             return JSONResponse(
                 {
-                    "detail": "未登录用不了这个功能，到「模型 → 授权」里免费激活",
+                    "detail": "未登录用不了这个功能，到「模型」页登录",
                     "feature": feature,
                     "need": need,
                     "tier": license.tier(),

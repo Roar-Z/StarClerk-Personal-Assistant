@@ -3,7 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import AppIcon from '../components/AppIcon.vue'
 import { api, download, type Quota, type Task, type TaskLog } from '../api'
-import { isFree } from '../store'
+import { isLoggedIn } from '../store'
 
 const tasks = ref<Task[]>([])
 const quota = ref<Quota>()
@@ -152,7 +152,7 @@ onMounted(refresh)
 
         <p class="muted-line">
           到点的任务先进队列，隔几秒跑一个，不会同时打模型；有异常才弹提醒。
-          免费版最多 20 个。
+          登录后最多 20 个。
         </p>
       </div>
     </div>
@@ -167,7 +167,7 @@ onMounted(refresh)
         <p v-if="!logs.length" class="empty">还没有执行记录</p>
       </div>
       <template #footer>
-        <el-button v-if="isFree" size="small" @click="download('/tasks/logs/export')">导出 CSV</el-button>
+        <el-button v-if="isLoggedIn" size="small" @click="download('/tasks/logs/export')">导出 CSV</el-button>
         <el-button size="small" type="primary" @click="logOpen = false">关闭</el-button>
       </template>
     </el-dialog>

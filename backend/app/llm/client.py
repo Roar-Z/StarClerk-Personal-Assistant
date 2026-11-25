@@ -26,7 +26,7 @@ from ..license import MAX_CONCURRENCY
 
 log = logging.getLogger("llm")
 
-# 游客只有一个选项：Kilo 网关的免费档。不给它出现在选择列表里，免得用户以为能手动切
+# 未登录只有一个选项：Kilo 网关的免费档。不给它出现在选择列表里，免得用户以为能手动切
 GUEST_PROVIDER = "kilo-free"
 
 PROVIDERS: dict[str, dict[str, Any]] = {
@@ -114,8 +114,8 @@ def _conf(provider: str | None) -> tuple[str, str, str, str]:
     当前服务商直接用设置页里的值（用户可能填了自建网关/中转）；
     显式指定其它服务商时用预设，避免串用错误地址。
 
-    游客不看这两条：他就是走 Kilo 免费档，你 .env 里填了 deepseek 也不生效，
-    不然改一下配置就能白嫖自己的 Key 了。激活用户也能把网关切到 kilo，图个不花自己的额度。
+    未登录不看这两条：他就是走 Kilo 免费档，你 .env 里填了 deepseek 也不生效，
+    不然改一下配置就能白嫖自己的 Key 了。已登录用户也能把网关切到 kilo，图个不花自己的额度。
     """
     if license.is_guest() or (settings.llm_gateway or "").lower() == "kilo":
         return (
@@ -137,7 +137,7 @@ def _conf(provider: str | None) -> tuple[str, str, str, str]:
 
 
 def _fallback_ready() -> bool:
-    # 游客只用免费模型，失败就明说，不偷偷换成本机 Ollama
+    # 未登录只用免费模型，失败就明说，不偷偷换成本机 Ollama
     if license.is_guest():
         return False
     return settings.fallback_enabled and settings.llm_base_url.rstrip("/") != settings.fallback_base_url.rstrip("/")

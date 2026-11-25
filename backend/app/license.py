@@ -1,13 +1,10 @@
-"""本地授权：未登录 guest / 免费版 free 两档，纯离线校验，不联网。
+"""本机登录状态：未登录 guest / 已登录 free，两态，不联网。
 
+内部还沿用 guest/free 这两个名字，界面上只说未登录和已登录。
 两层存储，各有用途：
-- SQLite 的 license 表是"真的状态"，接口增删改都走它；
-- data/license.json 是给人看的备份，把文件拷到另一台机器也能读到档位，
+- SQLite 的 license 表是真状态，登录退出都走它；
+- data/license.json 是给人看的备份，拷到另一台机器也能读到登录状态，
   所以启动时先读库，库里是空的再读这份 json 兜底。
-
-激活码格式：FREE-XXXXXX-YYYY
-YYYY 是用固定盐算出来的 4 位校验码，所以码不能随便改字母，但也不需要联网。
-老版本签过的 PRO 码照样收，统一当免费版处理。
 """
 from __future__ import annotations
 
@@ -29,7 +26,7 @@ RANK = {"guest": 0, "free": 1}
 
 
 def _normalize_tier(value: Any) -> str:
-    """老库里可能还存着 pro，读出来一律按免费版算。"""
+    """老库里可能还存着 pro，读出来一律按已登录算。"""
     t = str(value or "").strip().lower()
     if t == "pro":
         return "free"
@@ -37,48 +34,13 @@ def _normalize_tier(value: Any) -> str:
 
 # 并发上限写死 2：本地机器上再多线程一起打模型，显存和响应都会炸
 MAX_CONCURRENCY = 2
-_SALT = "starc2026"
 
-_lock = threading.RLock()  # activate 里会再次进 _state，必须是可重入锁
+_lock = threading.RLock()  # login 里会再次进 _state，必须是可重入锁
 _cache: dict[str, Any] = {}
 
 
-# ---------------------------------------------------------------- 激活码
-def _sign(body: str) -> str:
-    raw = f"{body}:{_SALT}".encode("utf-8")
-    return hashlib.sha1(raw).hexdigest()[:4].upper()
-
-
-def make_code(tier: str = "free", seed: str = "000000") -> str:
-    """生成一个可用的激活码，自己测试和 README 举例都用它。
-
-    现在只有免费版，传什么 tier 都是 FREE 码，参数留着是怕老脚本还这么调。
-    """
-    body = f"FREE-{seed.upper()}"
-    return f"{body}-{_sign(body)}"
-
-
-def free_code() -> str:
-    """一键免费激活用的码，跟机器码绑一下，只是看着像回事，不联网也不校验机器。"""
-    return make_code("free", seed=_machine()[:6])
-
-
-def parse_code(code: str) -> str | None:
-    """校验码通过就返回档位，否则 None。"""
-    text = (code or "").strip().upper()
-    parts = text.split("-")
-    if len(parts) != 3:
-        return None
-    tier, seed, sign = parts
-    if tier not in ("FREE", "PRO") or len(seed) < 4:
-        return None
-    if sign != _sign(f"{tier}-{seed}"):
-        return None
-    return "free"  # PRO 老码也按免费版认，别让人升级之后用不了
-
-
 def _machine() -> str:
-    """机器指纹只做展示，不参与校验——换电脑重新激活一下就行。"""
+    """机器指纹只做展示，不参与校验——换电脑重新登录一下就行。"""
     raw = f"{platform.node()}|{platform.machine()}|{settings.data_dir}"
     return hashlib.md5(raw.encode("utf-8")).hexdigest()[:10]
 
@@ -133,7 +95,7 @@ def _state() -> dict[str, Any]:
             # 老版本升级上来，库里那行 pro 就地改成 free，别把人踢回未登录
             meta.license_set("free", str(row.get("code") or ""), str(row.get("machine") or _machine()))
             row = meta.license_get() or row
-            log.info("旧的 Pro 授权已转成免费版")
+            log.info("旧的 Pro 状态已转成已登录")
         _cache.update(
             {
                 "tier": _normalize_tier(row.get("tier")),
@@ -165,26 +127,25 @@ def perf_mode() -> bool:
     return bool(_state()["perf_mode"])
 
 
-def activate(code: str) -> dict[str, Any]:
-    parsed = parse_code(code)
-    if not parsed:
-        raise ValueError("激活码不对，检查一下是不是少了几位")
+def login() -> dict[str, Any]:
+    """本机登录：不联网、不要密码，点一下就记在本地。"""
+    mark = "LOCAL-" + _machine()[:6].upper()
     with _lock:
-        meta.license_set(parsed, code.strip().upper(), _machine())
+        meta.license_set("free", mark, _machine())
         _cache.clear()
         _dump_json(_state())
-    log.info("本地激活成功：%s", parsed)
+    log.info("本机登录成功")
     return info()
 
 
-def reset() -> dict[str, Any]:
-    """退回未登录，方便自己试两档的区别。"""
+def logout() -> dict[str, Any]:
+    """退出登录，留着方便自己试未登录时有哪些限制。"""
     with _lock:
         meta.license_clear(_machine())
         _cache.clear()
         state = _state()
         _dump_json(state)
-    log.info("已退回游客模式")
+    log.info("已退出登录")
     return info()
 
 
@@ -202,11 +163,11 @@ def info() -> dict[str, Any]:
     limits = limits_for(state["tier"])
     return {
         "tier": state["tier"],
-        "label": {"guest": "未登录", "free": "免费版"}[state["tier"]],
+        "label": {"guest": "未登录", "free": "已登录"}[state["tier"]],
         "is_guest": state["tier"] == "guest",
-        "is_free": state["tier"] == "free",
-        "code": state["code"],
-        "activated_at": state["activated_at"],
+        "is_logged_in": state["tier"] == "free",
+        "mark": state["code"],
+        "logged_in_at": state["activated_at"],
         "machine": state["machine"],
         "perf_mode": state["perf_mode"],
         "max_concurrency": state["max_concurrency"],

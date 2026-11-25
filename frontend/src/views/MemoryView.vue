@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppIcon from '../components/AppIcon.vue'
 import { api, download, type Memory } from '../api'
-import { isFree } from '../store'
+import { isLoggedIn } from '../store'
 
 const list = ref<Memory[]>([])
 const text = ref('')
@@ -25,7 +25,7 @@ function kindText(k?: string) {
 async function load() {
   try {
     list.value = await api.memories()
-    if (isFree.value) {
+    if (isLoggedIn.value) {
       const g = await api.memoryGroups()
       groups.value = g.items.filter((x) => x.name && x.name !== '未分组')
     }
@@ -35,7 +35,7 @@ async function load() {
 }
 
 async function loadProfile() {
-  if (!isFree.value) return
+  if (!isLoggedIn.value) return
   try {
     profile.value = await api.memoryProfile()
   } catch {
@@ -137,7 +137,7 @@ onMounted(async () => {
         <span class="page-sub">{{ list.length }} 条 · 检索时按相关度取前几条</span>
       </div>
       <div class="head-ops">
-        <template v-if="isFree">
+        <template v-if="isLoggedIn">
           <button class="btn ghost" :disabled="!!working" @click="organize">
             {{ working === 'organize' ? '归类中…' : '自动归类' }}
           </button>
@@ -155,7 +155,7 @@ onMounted(async () => {
 
     <div class="page-body sc-scroll">
       <div class="page-inner stack">
-        <div v-if="isFree && profile" class="card">
+        <div v-if="isLoggedIn && profile" class="card">
           <div class="card-head">
             <span class="card-title">画像</span>
             <span class="card-hint">按入库时的标签粗略统计</span>

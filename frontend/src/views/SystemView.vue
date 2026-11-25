@@ -235,7 +235,7 @@ async function uninstallApp() {
               </el-popconfirm>
             </div>
             <p class="muted-line mt8">
-              所有数据都在本机 data 目录，不上传；授权档位不受清理影响，想换档去「模型」页激活。
+              所有数据都在本机 data 目录，不上传；登录状态不受清理影响，想退出去「模型」页。
             </p>
           </div>
         </section>

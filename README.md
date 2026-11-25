@@ -156,7 +156,7 @@ START → recall ─→ plan ─┬─(有工具调用)→ act ─┬─(还有�
 | | `GET /api/stats/usage?days=7` | `{totals, by_scope, by_model, daily}`（来自 SQLite `usage` 表） |
 | | `GET /api/stats/errors?limit=30` | 最近异常（接口/调度捕获后入库） |
 | config | `GET /api/config`、`PUT /api/config` | 配置（Key 掩码）；写回 `.env`，重启生效 |
-| | `GET /api/config/plan` | `{plan: guest\|free}` → 额度；本地授权，无支付 |
+| | `GET /api/config/plan` | `{plan: guest\|free}` → 额度；内部状态，无支付 |
 | | `GET /api/config/providers`、`POST /api/config/test`、`POST /api/config/rebuild-vector` | 预设 / 连通性 / 重建索引 |
 
 其它：`GET /api/health`、`GET /api/events`（SSE，推送巡检提醒）。

@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.deepseek.com/v1"
     llm_api_key: str = ""
     llm_model: str = "deepseek-chat"
-    # own = 用自己填的 Key；kilo = 走平台免费网关（激活用户也能选，省点钱）
+    # own = 用自己填的 Key；kilo = 走平台免费网关（登录用户也能选，省点钱）
     llm_gateway: str = "own"
     llm_temperature: float = 0.5
     llm_timeout: float = 60
@@ -51,12 +51,12 @@ class Settings(BaseSettings):
     fallback_base_url: str = "http://127.0.0.1:11434/v1"
     fallback_model: str = "qwen2.5:7b"
 
-    # ---- 游客免费模型 ----
-    # 游客不给选模型，统一走 Kilo 网关的免费档；这个档不用 Key，按 IP 限流
+    # ---- 未登录免费模型 ----
+    # 未登录不给选模型，统一走 Kilo 网关的免费档；这个档不用 Key，按 IP 限流
     guest_llm_base_url: str = "https://ai-gateway.kilo.ai/api/v1"
     guest_llm_model: str = "kilo-auto/free"
     guest_llm_api_key: str = ""  # 匿名档不校验；想带自己的 Key 就填这里
-    guest_hourly_limit: int = 200  # Kilo 免费档每小时上限，游客只分一半
+    guest_hourly_limit: int = 200  # Kilo 免费档每小时上限，未登录只分一半
 
     # ---- Agent ----
     agent_max_steps: int = 3  # ReAct 最多思考几轮（含首轮）
@@ -132,7 +132,7 @@ LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_API_KEY=
 LLM_MODEL=deepseek-chat
 LLM_GATEWAY=own
-# 游客固定用的免费模型（Kilo 网关免费档，Key 可留空）
+# 未登录固定用的免费模型（Kilo 网关免费档，Key 可留空）
 GUEST_LLM_BASE_URL=https://ai-gateway.kilo.ai/api/v1
 GUEST_LLM_MODEL=kilo-auto/free
 GUEST_LLM_API_KEY=

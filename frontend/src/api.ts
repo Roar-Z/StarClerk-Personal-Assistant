@@ -26,6 +26,7 @@ export interface Task {
   last_run_at?: number
   next_run_at?: number
 }
+// 内部还是 guest/free 两个值，界面上只说未登录和已登录
 export type Tier = 'guest' | 'free'
 
 export interface Quota {
@@ -48,14 +49,14 @@ export interface GuestQuota {
   reset_in: number
 }
 
-/** 两档权限和本地授权状态，界面上的锁都看它 */
+/** 本机登录状态，界面上的锁都看它 */
 export interface LicenseInfo {
   tier: Tier
   label: string
   is_guest: boolean
-  is_free: boolean
-  code: string
-  activated_at: number
+  is_logged_in: boolean
+  mark: string
+  logged_in_at: number
   machine: string
   perf_mode: boolean
   max_concurrency: number
@@ -279,10 +280,8 @@ export const api = {
 
   // 本地授权
   license: () => req<LicenseInfo>('/license', undefined, true),
-  activate: (code: string) =>
-    req<LicenseInfo>('/license/activate', { method: 'POST', body: JSON.stringify({ code }) }),
-  activateFree: () => req<LicenseInfo>('/license/free', { method: 'POST' }),
-  resetLicense: () => req<LicenseInfo>('/license', { method: 'DELETE' }),
+  login: () => req<LicenseInfo>('/license/login', { method: 'POST' }),
+  logout: () => req<LicenseInfo>('/license/logout', { method: 'POST' }),
   setPerf: (on: boolean) =>
     req<LicenseInfo>('/license/perf', { method: 'POST', body: JSON.stringify({ on }) }),
 

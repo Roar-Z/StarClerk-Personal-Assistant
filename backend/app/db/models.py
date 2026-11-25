@@ -208,7 +208,7 @@ def license_get() -> dict[str, Any] | None:
 
 
 def license_set(tier: str, code: str, machine: str) -> None:
-    # 从旧迁移包导入时可能还是 pro，落到库里统一算免费版
+    # 从旧迁移包导入时可能还是 pro，落到库里统一算已登录
     if str(tier).lower() == "pro":
         tier = "free"
     t = db.now()
@@ -221,7 +221,7 @@ def license_set(tier: str, code: str, machine: str) -> None:
 
 
 def license_clear(machine: str = "") -> None:
-    """退回游客也要留一行，否则「库里没有」会被当成新机器去读 json 备份。"""
+    """退出登录也要留一行，否则「库里没有」会被当成新机器去读 json 备份。"""
     t = db.now()
     db.exec_sql(
         """INSERT INTO license(id,tier,code,machine,activated_at,updated_at) VALUES(1,'guest','',?,0,?)

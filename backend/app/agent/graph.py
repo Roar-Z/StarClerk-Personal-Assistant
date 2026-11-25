@@ -86,8 +86,8 @@ def run_chat(
 ) -> dict[str, Any]:
     """同步执行一次问答；会话读写与记忆沉淀都在这里，API 层保持很薄。
 
-    游客模式传 save=False + hist（API 层从内存里取上一轮），
-    顺便把 RAG 和长期记忆都关掉——这是三档权限里游客的边界。
+    未登录模式传 save=False + hist（API 层从内存里取上一轮），
+    顺便把 RAG 和长期记忆都关掉——这是三档权限里未登录的边界。
     """
     from .. import license
 

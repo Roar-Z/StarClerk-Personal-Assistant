@@ -565,7 +565,7 @@ body {
   cursor: default;
 }
 
-/* 档位标签：未登录灰、免费版蓝，克制一点别抢眼 */
+/* 登录状态标签：未登录灰、已登录蓝，克制一点别抢眼 */
 .tag.tier-guest {
   color: var(--sc-muted);
 }

@@ -56,7 +56,7 @@ def get_config():
         "llm_model": settings.llm_model,
         "llm_gateway": settings.llm_gateway or "own",
         "llm_api_key_masked": ("***" + settings.llm_api_key[-4:]) if settings.llm_api_key else "",
-        # 游客实际调的是这条，前端模型页拿它显示"当前免费模型"
+        # 未登录实际调的是这条，前端模型页拿它显示"当前免费模型"
         "guest_model": {
             "provider": client.GUEST_PROVIDER,
             "label": "Kilo 免费",

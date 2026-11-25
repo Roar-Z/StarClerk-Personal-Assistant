@@ -4,12 +4,12 @@ import { api, type LicenseInfo, type Session } from './api'
 export const sessions = ref<Session[]>([])
 export const activeId = ref('')
 
-// 当前档位放这里，各页面直接读，省得每页都去请求一次
+// 登录状态放这里，各页面直接读，省得每页都去请求一次
 export const me = ref<LicenseInfo | null>(null)
 
 export const activeSession = computed(() => sessions.value.find((s) => s.id === activeId.value))
 export const isGuest = computed(() => me.value?.tier === 'guest')
-export const isFree = computed(() => me.value?.tier === 'free')
+export const isLoggedIn = computed(() => me.value?.tier === 'free')
 
 export async function loadLicense() {
   try {
@@ -22,7 +22,7 @@ export async function loadLicense() {
 
 export async function loadSessions() {
   if (isGuest.value) {
-    // 游客会话只在内存里，列表由对话页自己维护
+    // 未登录会话只在内存里，列表由对话页自己维护
     sessions.value = []
     return
   }

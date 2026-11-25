@@ -23,39 +23,31 @@ const saving = ref(false)
 const testing = ref(false)
 const rebuilding = ref(false)
 const status = ref<{ ok: boolean; text: string } | null>(null)
-const code = ref('')
-const activating = ref(false)
-const freeBusy = ref(false)
+const loginBusy = ref(false)
 const perfBusy = ref(false)
 
-async function doFreeActivate() {
-  freeBusy.value = true
+async function doLogin() {
+  loginBusy.value = true
   try {
-    await api.activateFree()
+    await api.login()
     await loadLicense()
     await loadSessions()
-    ElMessage.success('免费版已开，所有功能都能用了')
+    ElMessage.success('已登录，所有功能都能用了')
   } catch {
-    /* 失败提示在 api 层 */
+    /* 提示在 api 层 */
   } finally {
-    freeBusy.value = false
+    loginBusy.value = false
   }
 }
 
-async function doActivate() {
-  const text = code.value.trim()
-  if (!text) return ElMessage.warning('先粘贴激活码')
-  activating.value = true
+async function doLogout() {
   try {
-    await api.activate(text)
+    await api.logout()
     await loadLicense()
     await loadSessions()
-    code.value = ''
-    ElMessage.success(`已激活 ${me.value?.label || ''}`)
+    ElMessage.success('已退出登录')
   } catch {
-    /* 码不对的提示在 api 层 */
-  } finally {
-    activating.value = false
+    /* 提示在 api 层 */
   }
 }
 
@@ -68,17 +60,6 @@ async function togglePerf(on: boolean) {
     if (me.value) me.value.perf_mode = !on
   } finally {
     perfBusy.value = false
-  }
-}
-
-async function backToGuest() {
-  try {
-    await api.resetLicense()
-    await loadLicense()
-    await loadSessions()
-    ElMessage.success('已退回未登录模式')
-  } catch {
-    /* 同上 */
   }
 }
 
@@ -111,7 +92,7 @@ async function load() {
 }
 
 async function save() {
-  if (isGuest.value) return ElMessage.warning('未登录不能改模型，激活后就能自己填')
+  if (isGuest.value) return ElMessage.warning('未登录不能改模型，登录后就能自己填')
   saving.value = true
   try {
     const body = { ...cfg }
@@ -127,7 +108,7 @@ async function save() {
 }
 
 async function test() {
-  if (isGuest.value) return ElMessage.warning('激活后才能测试自己的模型')
+  if (isGuest.value) return ElMessage.warning('登录后才能测试自己的模型')
   testing.value = true
   status.value = null
   try {
@@ -170,8 +151,8 @@ onMounted(load)
       <div class="page-inner stack">
         <section class="card">
           <div class="card-head">
-            <span class="card-title">本地授权</span>
-            <span class="card-hint">离线校验</span>
+            <span class="card-title">本机登录</span>
+            <span class="card-hint">不联网</span>
           </div>
           <div class="card-body">
             <div class="lic-head">
@@ -182,23 +163,13 @@ onMounted(load)
                   {{ me?.limits.notes ?? 0 }} · 记忆 {{ me?.limits.memories ?? 0 }}
                 </span>
               </div>
-              <el-button v-if="me && !me.is_guest" link size="small" @click="backToGuest">退回未登录</el-button>
+              <el-button v-if="me && !me.is_guest" link size="small" @click="doLogout">退出登录</el-button>
             </div>
             <div v-if="me?.is_guest" class="lic-input">
-              <el-button size="small" type="primary" :loading="freeBusy" @click="doFreeActivate">
-                一键免费激活
-              </el-button>
-              <span class="lic-sub">不用码，点一下就切到免费版</span>
+              <el-button size="small" type="primary" :loading="loginBusy" @click="doLogin">登录</el-button>
+              <span class="lic-sub">只记在本机，不用账号密码，也不联网</span>
             </div>
-            <div v-if="me?.is_guest" class="lic-input">
-              <el-input
-                v-model="code"
-                size="small"
-                placeholder="也有激活码？贴这儿"
-                @keyup.enter="doActivate"
-              />
-              <el-button size="small" :loading="activating" @click="doActivate">用激活码</el-button>
-            </div>
+            <p v-else-if="me" class="muted-line mt8">已登录，所有功能都开着；退出后回到未登录的限制。</p>
             <div class="lic-row">
               <div>
                 <p>低配性能模式</p>
@@ -229,7 +200,7 @@ onMounted(load)
               <span class="tag tier-guest">每小时 {{ guestModel?.hourly ?? 0 }} 次</span>
             </div>
             <p class="muted-line mt8">
-              未登录只能用这个免费模型，额度是免费版的一半。免费激活后可以换成自己的服务商、地址和 Key。
+              未登录只能用这个免费模型，额度是已登录后的一半。登录后可以换成自己的服务商、地址和 Key。
             </p>
           </div>
 
@@ -291,7 +262,7 @@ onMounted(load)
             <span class="card-hint">Ollama + bge-m3</span>
           </div>
           <div class="card-body">
-            <p v-if="isGuest" class="muted-line">未登录模式只读，这些参数激活后才能改。</p>
+            <p v-if="isGuest" class="muted-line">未登录模式只读，这些参数登录后才能改。</p>
             <div class="form-row">
               <label>服务地址</label>
               <el-input

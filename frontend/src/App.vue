@@ -74,7 +74,7 @@ const locked = computed(() => {
 const lockMeta = computed(() => ({
   title: tabs.find((x) => x.key === tab.value)?.label || '',
   need: 'free' as const,
-  desc: '未登录只能对话，模型走免费网关、聊完不留记录。免费激活后所有功能都开着，不用再升级。',
+  desc: '未登录只能对话，模型走免费网关、聊完不留记录。登录后所有功能都开着，不用再升级。',
 }))
 
 const lockPoints = computed(() => [

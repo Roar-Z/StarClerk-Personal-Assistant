@@ -69,13 +69,14 @@ def _detail(key: str) -> tuple[int, str]:
         return paths.size_of(env), "有自定义配置" if env.is_file() else "使用默认配置"
     if key == "license":
         f = paths.license_file()
-        tier = "游客"
+        state = "未登录"
         if f.is_file():
             try:
-                tier = json.loads(f.read_text(encoding="utf-8")).get("tier", "游客")
+                tier = json.loads(f.read_text(encoding="utf-8")).get("tier", "guest")
+                state = "已登录" if tier == "free" else "未登录"
             except (OSError, ValueError):
                 pass
-        return paths.size_of(f), f"当前档位：{tier}"
+        return paths.size_of(f), f"当前状态：{state}"
     if key == "program":
         size = paths.size_of(paths.install_dir())
         return size, paths.human(size)
@@ -196,7 +197,7 @@ def _delete(key: str) -> str:
     if key == "license":
         _sql("DELETE FROM license")
         _rm(paths.license_file())
-        return "授权信息已清除，已退回游客"
+        return "登录信息已清除，已退出登录"
     if key == "program":
         links = [p for p in paths.shortcut_files() if p.is_file()]
         for p in links:
