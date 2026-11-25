@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import license
+from .. import license, quota
 from ..llm import client as llm
 from ..tasks.scheduler import runner
 
@@ -27,6 +27,9 @@ def info():
     data = license.info()
     data["llm"] = llm.gate_stats()
     data["scheduler"] = runner.status()
+    # 游客每小时免费模型剩多少，侧栏和输入框都用它；激活后用自己的模型就不用这个数了
+    if data.get("is_guest"):
+        data["guest_quota"] = quota.snapshot()
     data["tiers"] = [
         {"name": "guest", "label": "游客", "desc": "对话可用，会话不保存，不开放知识库/任务/记忆"},
         {"name": "free", "label": "免费版", "desc": "会话持久化、轻量知识库、5 个巡检任务、基础记忆"},

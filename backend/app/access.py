@@ -14,7 +14,8 @@ from . import license
 # 功能 → 最低档位
 FEATURES: dict[str, str] = {
     "chat": "guest",  # 对话、临时会话消息
-    "model": "guest",  # 只改模型 API 配置，游客也允许
+    "model": "guest",  # 读模型配置，游客也能看（但只能看免费模型那条）
+    "model_write": "free",  # 改模型 / 测试连接 / 重建索引要激活后才给
     "session": "free",  # 会话列表 / 新建 / 删除
     "export": "free",  # 导出 Markdown
     "tasks": "free",  # 托管巡检
@@ -52,6 +53,10 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("*", "/api/rag/batch", "batch"),
     ("*", "/api/rag", "rag"),
     ("*", "/api/stats", "usage"),
+    # 写配置的三个口子单独拎出来，游客只能 GET 看看当前用的是哪个模型
+    ("POST", "/api/config/test", "model_write"),
+    ("POST", "/api/config/rebuild-vector", "model_write"),
+    ("PUT", "/api/config", "model_write"),
     ("*", "/api/config", "model"),
     ("*", "/api/system", "model"),  # 版本/日志/自启属于本机维护，游客也能看
 )

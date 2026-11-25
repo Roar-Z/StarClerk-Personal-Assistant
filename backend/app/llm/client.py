@@ -20,10 +20,14 @@ from typing import Any, Iterator
 
 import httpx
 
+from .. import license
 from ..config import settings
 from ..license import MAX_CONCURRENCY
 
 log = logging.getLogger("llm")
+
+# 游客只有一个选项：Kilo 网关的免费档。不给它出现在选择列表里，免得用户以为能手动切
+GUEST_PROVIDER = "kilo-free"
 
 PROVIDERS: dict[str, dict[str, Any]] = {
     "doubao": {
@@ -109,7 +113,17 @@ def _conf(provider: str | None) -> tuple[str, str, str, str]:
 
     当前服务商直接用设置页里的值（用户可能填了自建网关/中转）；
     显式指定其它服务商时用预设，避免串用错误地址。
+
+    游客不看这两条：他就是走 Kilo 免费档，你 .env 里填了 deepseek 也不生效，
+    不然改一下配置就能白嫖自己的 Key 了。
     """
+    if license.is_guest():
+        return (
+            settings.guest_llm_base_url,
+            settings.guest_llm_model,
+            settings.guest_llm_api_key,
+            GUEST_PROVIDER,
+        )
     name = (provider or settings.llm_provider or "custom").lower()
     preset = PROVIDERS.get(name, PROVIDERS["custom"])
     if name == (settings.llm_provider or "").lower() and settings.llm_base_url:
@@ -123,6 +137,9 @@ def _conf(provider: str | None) -> tuple[str, str, str, str]:
 
 
 def _fallback_ready() -> bool:
+    # 游客只用免费模型，失败就明说，不偷偷换成本机 Ollama
+    if license.is_guest():
+        return False
     return settings.fallback_enabled and settings.llm_base_url.rstrip("/") != settings.fallback_base_url.rstrip("/")
 
 
@@ -240,8 +257,12 @@ def complete(
     usage = _usage(data.get("usage"))
     latency = int((time.perf_counter() - started) * 1000)
     _record(name, mdl, usage, scope, latency)
+    text = (msg.get("content") or "").strip()
+    if not text:
+        # 免费档常转到推理模型，字数少的时候正文是空的，全写在 reasoning 里
+        text = (msg.get("reasoning") or "").strip()
     result = LLMResult(
-        content=(msg.get("content") or "").strip(),
+        content=text,
         tool_calls=_normalize_calls(msg.get("tool_calls")),
         usage=usage,
         provider=name,

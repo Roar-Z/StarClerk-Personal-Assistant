@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from .. import license, sessions
+from .. import license, quota, sessions
 from ..access import require
 from ..agent import graph
 from .deps import failure
@@ -38,6 +38,7 @@ class ChatOut(BaseModel):
     should_notify: bool = False
     level: str = "info"
     tier: str = "free"
+    quota: dict[str, Any] | None = None  # 游客返回剩余免费额度，前端直接刷显示
 
 
 class SessionIn(BaseModel):
@@ -50,6 +51,9 @@ async def chat(body: ChatIn):
     if not text:
         raise HTTPException(400, "消息不能为空")
     guest = license.is_guest()
+    if guest:
+        # 免费模型额度先过一道，用完了不让往下走，省得白等几十秒
+        quota.check()
     sid = body.session_id or sessions.create(text[:60])["id"]
     try:
         if guest:
@@ -60,6 +64,7 @@ async def chat(body: ChatIn):
             sessions.append(sid, "assistant", res["answer"])
             if not hist:
                 sessions.touch_title(sid, text[:60])
+            quota.hit()
         else:
             res = await asyncio.to_thread(
                 graph.run_chat, sid, text, body.use_rag, body.doc_scope, True, None, body.workspace
@@ -69,6 +74,8 @@ async def chat(body: ChatIn):
     res.pop("notice", None)  # 对话不推托盘，只保留标记
     res["session_id"] = sid
     res["tier"] = license.tier()
+    if guest:
+        res["quota"] = quota.snapshot()
     return res
 
 

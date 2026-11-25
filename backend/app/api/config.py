@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from .. import access, license
+from .. import access, license, quota
 from ..config import settings
 from ..db import models as meta
 from ..llm import client
@@ -53,6 +53,14 @@ def get_config():
         "llm_base_url": settings.llm_base_url,
         "llm_model": settings.llm_model,
         "llm_api_key_masked": ("***" + settings.llm_api_key[-4:]) if settings.llm_api_key else "",
+        # 游客实际调的是这条，前端模型页拿它显示"当前免费模型"
+        "guest_model": {
+            "provider": client.GUEST_PROVIDER,
+            "label": "Kilo 免费",
+            "base_url": settings.guest_llm_base_url,
+            "model": settings.guest_llm_model,
+            "hourly": quota.limit(),
+        },
         "embed_base_url": settings.embed_base_url,
         "embed_model": settings.embed_model,
         "embed_dim": settings.embed_dim,
