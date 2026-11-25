@@ -25,10 +25,10 @@ def run_gui() -> int:
         "安装 StarClerk",
         html.as_uri(),
         js_api=api,
-        width=900,
-        height=660,
+        width=760,
+        height=480,
         resizable=False,
-        background_color="#F7F8FA",
+        background_color="#FFFFFF",
     )
     api._window = window
     webview.start()

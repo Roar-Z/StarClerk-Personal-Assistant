@@ -4,107 +4,103 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>安装 StarClerk</title>
-    <link rel="stylesheet" href="../../uninstaller/ui/style.css" />
+    <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="install.css" />
   </head>
   <body>
     <div class="app">
-      <header class="head">
-        <div class="brand">
-          <div class="logo">S</div>
-          <div class="brand-text">
-            <h1>StarClerk 安装向导</h1>
-            <p>本地桌面版 · 装到这台电脑上</p>
-          </div>
+      <header class="title-bar">
+        <div class="title-left">
+          <span class="app-icon">S</span>
+          <h1>StarClerk 安装程序</h1>
         </div>
-        <span class="ver" id="ver">v—</span>
+        <span class="ver" id="ver">版本 —</span>
       </header>
 
-      <nav class="steps">
-        <div class="step on" data-s="1"><span class="num">1</span>欢迎</div>
-        <div class="step-line"></div>
-        <div class="step" data-s="2"><span class="num">2</span>安装位置</div>
-        <div class="step-line"></div>
-        <div class="step" data-s="3"><span class="num">3</span>附加任务</div>
-        <div class="step-line"></div>
-        <div class="step" data-s="4"><span class="num">4</span>完成</div>
-      </nav>
+      <div class="main">
+        <aside class="side">
+          <div class="step on" data-s="1"><span class="num">1</span>欢迎</div>
+          <div class="step" data-s="2"><span class="num">2</span>安装位置</div>
+          <div class="step" data-s="3"><span class="num">3</span>附加任务</div>
+          <div class="step" data-s="4"><span class="num">4</span>安装</div>
+        </aside>
 
-      <main class="body">
-        <!-- 1 欢迎 -->
-        <section class="page" id="page1">
-          <div class="page-head">
-            <h2>欢迎使用 StarClerk</h2>
-            <p>接下来三步就能装好：选目录、挑附加任务、等它拷完。整个过程不需要管理员权限。</p>
-          </div>
-          <div class="panel sum-box" id="welcome"></div>
-          <p class="tip" id="welcome-tip">安装会占用上方显示的空间，卸载时可以在「应用和功能」里找到。</p>
-        </section>
-
-        <!-- 2 目录 -->
-        <section class="page" id="page2" hidden>
-          <div class="page-head">
-            <h2>装到哪里</h2>
-            <p>默认装在当前用户目录，不用输管理员密码。想放别的盘直接改，路径会自动建。</p>
-          </div>
-          <div class="field">
-            <span>安装目录</span>
-            <div class="path-row">
-              <input id="dir" autocomplete="off" spellcheck="false" />
-              <button class="ghost" id="browse">浏览…</button>
+        <main class="body">
+          <!-- 1 欢迎 -->
+          <section class="page" id="page1">
+            <div class="page-head">
+              <h2>欢迎使用 StarClerk 安装程序</h2>
+              <p>安装程序将引导您完成 StarClerk 的安装。安装在当前用户下进行，不需要管理员权限。</p>
             </div>
-            <p class="hint" id="dir-hint">建议放在空间充足的盘里，路径别带中文符号。</p>
-          </div>
-          <div class="panel sum-box" id="space"></div>
-        </section>
+            <div class="panel sum-box" id="welcome"></div>
+            <p class="tip" id="welcome-tip">点击「下一步」继续；如需退出安装，请点击左下角的「取消安装」。</p>
+          </section>
 
-        <!-- 3 附加任务 -->
-        <section class="page" id="page3" hidden>
-          <div class="page-head">
-            <h2>顺手做几件事</h2>
-            <p>不想要就取消勾选，装完以后在设置里也能改。</p>
-          </div>
-          <div class="panel">
-            <label class="opt">
-              <input type="checkbox" id="desktop" checked />
-              <div>
-                <b>创建桌面快捷方式</b>
-                <span>双击就能打开，不用去开始菜单翻</span>
+          <!-- 2 目录 -->
+          <section class="page" id="page2" hidden>
+            <div class="page-head">
+              <h2>选择安装位置</h2>
+              <p>安装程序将把程序文件安装到下面的文件夹。如需更改，请点击「浏览」选择其他位置。</p>
+            </div>
+            <div class="field">
+              <span>安装文件夹</span>
+              <div class="path-row">
+                <input id="dir" autocomplete="off" spellcheck="false" />
+                <button class="ghost" id="browse">浏览</button>
               </div>
-            </label>
-            <label class="opt">
-              <input type="checkbox" id="menu" checked />
-              <div>
-                <b>加到开始菜单</b>
-                <span>在开始菜单里能搜到 StarClerk</span>
-              </div>
-            </label>
-            <label class="opt">
-              <input type="checkbox" id="autostart" />
-              <div>
-                <b>开机自动启动</b>
-                <span>登录后自动在托盘里待命，不需要就关掉</span>
-              </div>
-            </label>
-          </div>
-        </section>
+              <p class="hint" id="dir-hint">建议选择空间充足的磁盘，路径不要包含特殊字符。</p>
+            </div>
+            <div class="panel sum-box" id="space"></div>
+          </section>
 
-        <!-- 4 安装 + 完成 -->
-        <section class="page" id="page4" hidden>
-          <div class="done-mark" id="done-mark">↓</div>
-          <div class="page-head">
-            <h2 id="last-title">正在安装</h2>
-            <p id="last-sub">正在往目标目录复制文件，别关窗口。</p>
-          </div>
-          <div class="progress"><i id="bar"></i></div>
-          <ul class="step-log" id="log"></ul>
-          <div class="panel sum-box" id="done-box" hidden></div>
-        </section>
-      </main>
+          <!-- 3 附加任务 -->
+          <section class="page" id="page3" hidden>
+            <div class="page-head">
+              <h2>附加任务</h2>
+              <p>请选择安装程序需要执行的附加任务，安装完成后也可以在设置中修改。</p>
+            </div>
+            <div class="panel">
+              <label class="opt">
+                <input type="checkbox" id="desktop" checked />
+                <div>
+                  <b>创建桌面快捷方式</b>
+                  <span>在桌面生成 StarClerk 快捷方式</span>
+                </div>
+              </label>
+              <label class="opt">
+                <input type="checkbox" id="menu" checked />
+                <div>
+                  <b>添加到开始菜单</b>
+                  <span>在开始菜单中创建 StarClerk 快捷方式</span>
+                </div>
+              </label>
+              <label class="opt">
+                <input type="checkbox" id="autostart" />
+                <div>
+                  <b>开机自动启动</b>
+                  <span>登录 Windows 后自动启动，驻留系统托盘</span>
+                </div>
+              </label>
+            </div>
+          </section>
+
+          <!-- 4 安装 + 完成 -->
+          <section class="page" id="page4" hidden>
+            <div class="done-mark" id="done-mark">↓</div>
+            <div class="page-head">
+              <h2 id="last-title">正在安装</h2>
+              <p id="last-sub">正在复制程序文件，请勿关闭窗口。</p>
+            </div>
+            <div class="progress"><i id="bar"></i></div>
+            <ul class="step-log" id="log"></ul>
+            <div class="panel sum-box" id="done-box" hidden></div>
+          </section>
+        </main>
+      </div>
 
       <footer class="foot">
         <div class="left">
-          <button class="link" id="quit" hidden>取消安装</button>
+          <button class="link" id="quit">取消安装</button>
         </div>
         <div class="right">
           <button class="ghost" id="prev" hidden>上一步</button>

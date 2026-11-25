@@ -38,7 +38,7 @@ async function boot() {
   state.info = info;
   state.target = info.default_dir;
 
-  $('ver').textContent = 'v' + info.version;
+  $('ver').textContent = '版本 ' + info.version;
   $('dir').value = info.default_dir;
   $('welcome').innerHTML =
     '<span>程序版本</span><b>' + esc(info.app) + ' ' + esc(info.version) + '</b>' +

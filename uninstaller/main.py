@@ -60,10 +60,10 @@ def run_gui() -> int:
         "卸载 StarClerk",
         html.as_uri(),
         js_api=api,
-        width=880,
-        height=700,
-        min_size=(760, 620),
-        background_color="#F7F8FA",
+        width=760,
+        height=480,
+        resizable=False,
+        background_color="#FFFFFF",
     )
     api._window = window
     webview.start()

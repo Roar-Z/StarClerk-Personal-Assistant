@@ -1,26 +1,4 @@
-/* 安装页在卸载页那套样式上补一点，尽量别重复写 */
-body {
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-#dir {
-  -webkit-user-select: text;
-  user-select: text;
-}
-
+/* 安装页在共用样式上补一点，别重复写整份 */
 .sum-box {
-  grid-template-columns: 88px 1fr;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-}
-
-.progress {
-  margin-top: 2px;
-}
-
-.step-log {
-  margin-bottom: 12px;
+  grid-template-columns: 80px 1fr;
 }

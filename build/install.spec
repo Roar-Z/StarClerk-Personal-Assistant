@@ -17,7 +17,6 @@ hidden = collect_submodules("webview") + [
 
 datas = [
     (str(ROOT / "installer" / "ui"), "installer/ui"),
-    (str(ROOT / "uninstaller" / "ui"), "uninstaller/ui"),  # 安装页复用这份样式
 ]
 
 if APP_DIR.is_dir():

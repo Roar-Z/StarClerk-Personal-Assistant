@@ -202,13 +202,10 @@ async function execute() {
   $('go').textContent = '卸载';
 
   if (r.need_stop) {
+    // 提示条在第 2 步，退回第 1 步就看不见了，直接弹出来
     paintGuard(r.guard);
     showStep(1);
-    const banner = $('banner');
-    banner.hidden = false;
-    banner.className = 'banner danger';
-    $('banner-title').textContent = '先关主程序';
-    $('banner-text').textContent = r.message || '主程序还没有完全退出，等一下再试。';
+    alert(r.message || '主程序还没有完全退出，请稍后再试。');
     return;
   }
   if (r.message && !(r.results || []).length) {

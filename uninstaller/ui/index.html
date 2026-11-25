@@ -8,98 +8,94 @@
   </head>
   <body>
     <div class="app">
-      <header class="head">
-        <div class="brand">
-          <div class="logo">S</div>
-          <div class="brand-text">
-            <h1>卸载 StarClerk</h1>
-            <p>本地桌面版 · 数据清理向导</p>
-          </div>
+      <header class="title-bar">
+        <div class="title-left">
+          <span class="app-icon">S</span>
+          <h1>StarClerk 卸载程序</h1>
         </div>
-        <span class="ver">v0.2.0</span>
+        <span class="ver">版本 0.2.0</span>
       </header>
 
-      <nav class="steps" id="steps">
-        <div class="step on" data-s="1"><span class="num">1</span>确认卸载</div>
-        <div class="step-line"></div>
-        <div class="step" data-s="2"><span class="num">2</span>清理选项</div>
-        <div class="step-line"></div>
-        <div class="step" data-s="3"><span class="num">3</span>确认删除</div>
-        <div class="step-line"></div>
-        <div class="step" data-s="4"><span class="num">4</span>完成</div>
-      </nav>
+      <div class="main">
+        <aside class="side">
+          <div class="step on" data-s="1"><span class="num">1</span>确认卸载</div>
+          <div class="step" data-s="2"><span class="num">2</span>清理选项</div>
+          <div class="step" data-s="3"><span class="num">3</span>确认删除</div>
+          <div class="step" data-s="4"><span class="num">4</span>完成</div>
+        </aside>
 
-      <main class="body">
-        <!-- 1 确认 -->
-        <section class="page" id="page1">
-          <div class="page-head">
-            <h2>准备卸载 StarClerk</h2>
-            <p>向导会先让你挑要删的数据，确认之后才会真正动手，中途可以随时取消。</p>
-          </div>
-          <div class="panel facts-panel">
-            <div class="facts">
-              <div class="fact">
-                <span>安装位置</span>
-                <b id="where" title="">—</b>
-              </div>
-              <div class="fact">
-                <span>本地数据</span>
-                <b id="total">—</b>
-              </div>
-              <div class="fact">
-                <span>运行状态</span>
-                <b id="run">检测中…</b>
-              </div>
+        <main class="body">
+          <!-- 1 确认 -->
+          <section class="page" id="page1">
+            <div class="page-head">
+              <h2>卸载 StarClerk</h2>
+              <p>卸载程序将删除本机的 StarClerk 程序文件和数据。您可以先选择需要保留的内容。</p>
             </div>
-            <button class="mini" id="kill" hidden>结束进程</button>
-          </div>
-          <p class="tip">卸载只影响这台电脑，聊天记录、知识库这些不会上传到任何地方。</p>
-        </section>
-
-        <!-- 2 选数据 -->
-        <section class="page" id="page2" hidden>
-          <div class="page-head">
-            <h2>选择要清理的内容</h2>
-            <p>默认只勾了统计和日志，其他的按需要选。勾上会展开对应的说明。</p>
-          </div>
-          <div class="banner" id="banner" hidden>
-            <strong id="banner-title">注意</strong>
-            <span id="banner-text"></span>
-          </div>
-          <section class="panel list" id="list">
-            <div class="loading">正在读取本机数据…</div>
+            <div class="panel facts-panel">
+              <div class="facts">
+                <div class="fact">
+                  <span>安装位置</span>
+                  <b id="where" title="">—</b>
+                </div>
+                <div class="fact">
+                  <span>本地数据</span>
+                  <b id="total">—</b>
+                </div>
+                <div class="fact">
+                  <span>运行状态</span>
+                  <b id="run">检测中…</b>
+                </div>
+              </div>
+              <button class="mini" id="kill" hidden>结束进程</button>
+            </div>
+            <p class="tip">卸载只影响本机，聊天记录和知识库不会上传到任何位置。</p>
           </section>
-          <p class="tip">配置和授权删掉后要重新填写，知识库删掉要重新导入文件。</p>
-        </section>
 
-        <!-- 3 确认 -->
-        <section class="page" id="page3" hidden>
-          <div class="page-head">
-            <h2>最后确认一下</h2>
-            <p>下面这些内容会从本机永久删除，没有备份，也不会进回收站。</p>
-          </div>
-          <div class="panel sum-box" id="summary"></div>
-          <ul class="dlg-list" id="picked-list"></ul>
-          <div class="dlg-warn" id="picked-warn" hidden></div>
-          <div class="field">
-            <label for="phrase">确认无误请输入 <b>DELETE</b>（大写）</label>
-            <div class="path-row">
-              <input id="phrase" autocomplete="off" spellcheck="false" placeholder="输入 DELETE 解锁卸载按钮" />
+          <!-- 2 选数据 -->
+          <section class="page" id="page2" hidden>
+            <div class="page-head">
+              <h2>选择要清理的内容</h2>
+              <p>默认勾选统计和日志。勾选其他项目时会显示对应的说明。</p>
             </div>
-          </div>
-        </section>
+            <div class="banner" id="banner" hidden>
+              <strong id="banner-title">注意</strong>
+              <span id="banner-text"></span>
+            </div>
+            <section class="panel list" id="list">
+              <div class="loading">正在读取本机数据…</div>
+            </section>
+            <p class="tip">配置和授权删除后需要重新填写，知识库删除后需要重新导入文件。</p>
+          </section>
 
-        <!-- 4 完成 -->
-        <section class="page" id="page4" hidden>
-          <div class="done-mark" id="done-mark">✓</div>
-          <div class="page-head">
-            <h2 id="done-title">清理完成</h2>
-            <p id="done-sub">选中的内容已经删掉了，下面是逐项结果。</p>
-          </div>
-          <ul class="result" id="result"></ul>
-          <p class="sum" id="sum"></p>
-        </section>
-      </main>
+          <!-- 3 确认 -->
+          <section class="page" id="page3" hidden>
+            <div class="page-head">
+              <h2>确认卸载</h2>
+              <p>下列内容将从本机永久删除，不会进入回收站，也无法恢复。</p>
+            </div>
+            <div class="panel sum-box" id="summary"></div>
+            <ul class="dlg-list" id="picked-list"></ul>
+            <div class="dlg-warn" id="picked-warn" hidden></div>
+            <div class="field">
+              <label for="phrase">确认无误后请输入 <b>DELETE</b>（大写）</label>
+              <div class="path-row">
+                <input id="phrase" autocomplete="off" spellcheck="false" placeholder="输入 DELETE 以继续" />
+              </div>
+            </div>
+          </section>
+
+          <!-- 4 完成 -->
+          <section class="page" id="page4" hidden>
+            <div class="done-mark" id="done-mark">✓</div>
+            <div class="page-head">
+              <h2 id="done-title">清理完成</h2>
+              <p id="done-sub">选中的内容已删除，下面是逐项结果。</p>
+            </div>
+            <ul class="result" id="result"></ul>
+            <p class="sum" id="sum"></p>
+          </section>
+        </main>
+      </div>
 
       <footer class="foot">
         <div class="left">
@@ -118,10 +114,10 @@
     <div class="mask" id="mask" hidden>
       <div class="dialog" role="dialog" aria-modal="true">
         <h2>确认卸载</h2>
-        <p class="dlg-sub" id="dlg-sub">点「确认删除」之后马上开始，删完不能恢复。</p>
-        <div class="dlg-warn">主程序还在运行的话会先停下来，删到一半被占用会失败。</div>
+        <p class="dlg-sub" id="dlg-sub">点击「确认删除」后立即开始，删除的内容无法恢复。</p>
+        <div class="dlg-warn">主程序正在运行时会先停止它；文件被占用会导致删除失败。</div>
         <div class="dlg-foot">
-          <button class="ghost" id="dlg-back">再想想</button>
+          <button class="ghost" id="dlg-back">返回</button>
           <button class="primary danger" id="dlg-ok">确认删除</button>
         </div>
       </div>
