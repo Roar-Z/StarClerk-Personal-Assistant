@@ -382,6 +382,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 标题右边的操作区，几个页面都在用 */
+.head-ops {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
 .page-body {
   flex: 1;
   min-height: 0;
