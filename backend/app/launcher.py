@@ -16,6 +16,7 @@ import uvicorn
 from .config import settings
 from .db.sqlite import init_db
 from .desktop import hotkey, tray, window
+from .log import setup as setup_log
 from .tasks.scheduler import runner  # noqa: F401  确保子模块被 PyInstaller 收集
 
 log = logging.getLogger("launcher")
@@ -54,7 +55,7 @@ def _wait_ready(timeout: float = 20) -> bool:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    setup_log()
     init_db()
     threading.Thread(target=_serve, name="api", daemon=True).start()
     if not _wait_ready():

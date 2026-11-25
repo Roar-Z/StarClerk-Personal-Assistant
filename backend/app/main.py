@@ -16,10 +16,11 @@ from .api import routers
 from .config import settings
 from .db import models as meta
 from .db.sqlite import init_db
+from .log import setup as setup_log
 from .notify import notifier
 from .tasks.scheduler import runner
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+setup_log()
 log = logging.getLogger("main")
 
 
@@ -101,15 +102,20 @@ def health():
     }
 
 
-# ---- 前端静态资源（打包后由同一进程提供，避免 5173 端口依赖）----
-_static = settings.static_path
-if (_static / "index.html").exists():
-    if (_static / "assets").exists():
-        app.mount("/assets", StaticFiles(directory=_static / "assets"), name="assets")
+# ---- 前端静态资源：build 完的 dist 由同一进程托管，打包后不需要再跑 5173 ----
+_DIST = settings.static_path
+app.mount("/assets", StaticFiles(directory=_DIST / "assets", check_dir=False), name="assets")
 
-    @app.get("/{path:path}")
-    def spa(path: str):
-        target = _static / path
-        if path and target.is_file():
-            return FileResponse(target)
-        return FileResponse(_static / "index.html")
+
+@app.get("/{path:path}", include_in_schema=False)
+def spa(path: str):
+    if path.startswith("api/"):
+        return JSONResponse({"detail": "接口不存在"}, status_code=404)
+    index = _DIST / "index.html"
+    if not index.is_file():
+        return JSONResponse({"detail": "前端未构建，先在 frontend 下执行 npm run build"}, status_code=503)
+    target = (_DIST / path).resolve()
+    # 只允许 dist 目录内的文件，挡掉 ../ 之类的路径
+    if path and target.is_file() and _DIST.resolve() in target.parents:
+        return FileResponse(target)
+    return FileResponse(index)

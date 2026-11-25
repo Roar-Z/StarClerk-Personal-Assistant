@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     hotkey: str = "<ctrl>+<alt>+<space>"
     tray_enabled: bool = True
     window_mode: str = "webview"  # webview | browser | none
+    window_width: int = 440  # 悬浮面板：窄长条，不占满屏幕
+    window_height: int = 700
 
     @property
     def root(self) -> Path:
