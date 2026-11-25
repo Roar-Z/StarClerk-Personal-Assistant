@@ -2,7 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
-import { loadLicense, loadSessions, me } from '../store'
+import { isGuest, loadLicense, loadSessions, me } from '../store'
 
 const cfg = reactive<any>({
   llm_provider: 'deepseek',
@@ -16,6 +16,8 @@ const cfg = reactive<any>({
   hotkey: '<ctrl>+<alt>+<space>',
 })
 const providers = ref<Record<string, any>>({})
+// 游客实际调的是哪个免费模型，后端在 /config 里一起给
+const guestModel = ref<{ label: string; model: string; hourly: number } | null>(null)
 const saving = ref(false)
 const testing = ref(false)
 const rebuilding = ref(false)
@@ -75,6 +77,7 @@ async function load() {
   try {
     const s = await api.settings()
     providers.value = s.providers
+    guestModel.value = s.guest_model || null
     Object.assign(cfg, {
       llm_provider: s.llm_provider,
       llm_base_url: s.llm_base_url,
@@ -91,6 +94,7 @@ async function load() {
 }
 
 async function save() {
+  if (isGuest.value) return ElMessage.warning('游客不能改模型，激活后就能自己填')
   saving.value = true
   try {
     const body = { ...cfg }
@@ -106,6 +110,7 @@ async function save() {
 }
 
 async function test() {
+  if (isGuest.value) return ElMessage.warning('激活后才能测试自己的模型')
   testing.value = true
   status.value = null
   try {
@@ -140,7 +145,8 @@ onMounted(load)
         <span class="page-title">模型</span>
         <span class="page-sub">写在本机 .env</span>
       </div>
-      <el-button size="small" type="primary" :loading="saving" @click="save">保存</el-button>
+      <el-button v-if="!isGuest" size="small" type="primary" :loading="saving" @click="save">保存</el-button>
+      <span v-else class="page-sub">游客只读</span>
     </header>
 
     <div class="page-body sc-scroll">
@@ -188,9 +194,23 @@ onMounted(load)
         <section class="card">
           <div class="card-head">
             <span class="card-title">对话模型</span>
-            <span class="card-hint">OpenAI 兼容</span>
+            <span class="card-hint">{{ isGuest ? '游客固定' : 'OpenAI 兼容' }}</span>
           </div>
-          <div class="card-body">
+
+          <div v-if="isGuest" class="card-body">
+            <div class="lic-head">
+              <div>
+                <p class="lic-name">{{ guestModel?.label || 'Kilo 免费' }}</p>
+                <span class="lic-sub">{{ guestModel?.model || 'kilo-auto/free' }}</span>
+              </div>
+              <span class="tag tier-guest">每小时 {{ guestModel?.hourly ?? 0 }} 次</span>
+            </div>
+            <p class="muted-line mt8">
+              游客只能用这个免费模型，额度是免费档的一半，另一半留给激活后的用户。激活后可以换成自己的服务商、地址和 Key。
+            </p>
+          </div>
+
+          <div v-else class="card-body">
             <div class="form-row">
               <label>服务商</label>
               <el-select v-model="cfg.llm_provider" size="small" @change="applyPreset">
@@ -222,29 +242,42 @@ onMounted(load)
             <span class="card-hint">Ollama + bge-m3</span>
           </div>
           <div class="card-body">
+            <p v-if="isGuest" class="muted-line">游客模式只读，这些参数激活后才能改。</p>
             <div class="form-row">
               <label>服务地址</label>
-              <el-input v-model="cfg.embed_base_url" size="small" placeholder="http://127.0.0.1:11434/v1" />
+              <el-input
+                v-model="cfg.embed_base_url"
+                size="small"
+                :disabled="isGuest"
+                placeholder="http://127.0.0.1:11434/v1"
+              />
             </div>
             <div class="form-row">
               <label>模型</label>
-              <el-input v-model="cfg.embed_model" size="small" placeholder="bge-m3" />
+              <el-input v-model="cfg.embed_model" size="small" :disabled="isGuest" placeholder="bge-m3" />
             </div>
             <div class="form-row">
               <label>维度</label>
-              <el-input-number v-model="cfg.embed_dim" :min="64" :max="4096" size="small" controls-position="right" />
+              <el-input-number
+                v-model="cfg.embed_dim"
+                :min="64"
+                :max="4096"
+                :disabled="isGuest"
+                size="small"
+                controls-position="right"
+              />
             </div>
             <div class="form-row">
               <label>断网降级</label>
               <div class="switch-line">
-                <el-switch v-model="cfg.fallback_enabled" size="small" />
+                <el-switch v-model="cfg.fallback_enabled" size="small" :disabled="isGuest" />
                 <span>云端挂了自动切本地模型</span>
               </div>
             </div>
             <div class="form-foot">
               <el-popconfirm title="清空向量库后资料要重新导入，确定？" width="220" @confirm="rebuild">
                 <template #reference>
-                  <el-button link size="small" :loading="rebuilding">重建索引</el-button>
+                  <el-button link size="small" :loading="rebuilding" :disabled="isGuest">重建索引</el-button>
                 </template>
               </el-popconfirm>
             </div>
@@ -256,7 +289,7 @@ onMounted(load)
           <div class="card-body">
             <div class="form-row">
               <label>唤起热键</label>
-              <el-input v-model="cfg.hotkey" size="small" />
+              <el-input v-model="cfg.hotkey" size="small" :disabled="isGuest" />
             </div>
             <p class="muted-line mt8">
               例：&lt;ctrl&gt;+&lt;alt&gt;+&lt;space&gt;，改完要重启才生效。模型和向量配置同理，数据都在 data 目录，复制走就能带走。

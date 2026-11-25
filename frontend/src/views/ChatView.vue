@@ -10,6 +10,7 @@ import {
   fmtTime,
   isGuest,
   loadSessions,
+  me,
   sessions,
 } from '../store'
 
@@ -23,6 +24,8 @@ const box = ref<HTMLElement>()
 const ta = ref<HTMLTextAreaElement>()
 
 const title = computed(() => activeSession.value?.title || '新对话')
+// 游客的免费模型余量，发一条消息后端会带最新的回来
+const gq = computed(() => me.value?.guest_quota)
 const greeting = computed(() => {
   const h = new Date().getHours()
   return h < 6 ? '夜深了' : h < 11 ? '早上好' : h < 14 ? '中午好' : h < 19 ? '下午好' : '晚上好'
@@ -79,6 +82,7 @@ async function send(text?: string) {
     activeId.value = r.session_id
     list.value.push({ id: `a${Date.now()}`, role: 'assistant', content: r.answer, created_at: Date.now() / 1000 })
     sources.value = r.contexts
+    if (r.quota && me.value) me.value.guest_quota = r.quota
     if (isGuest.value) {
       if (!sessions.value.some((s) => s.id === r.session_id)) {
         sessions.value = [
@@ -199,7 +203,7 @@ onUnmounted(() => window.removeEventListener('sc:focus', onFocusEvent))
           <p>
             {{
               isGuest
-                ? '游客模式可以正常对话，激活会话才会保存在本机。'
+                ? `游客用 Kilo 免费模型，每小时 ${gq?.limit ?? 0} 次；激活后能换自己的模型，额度也是现在的两倍。`
                 : '可以检索本地资料、记住你说过的事，也会在后台定时巡检后主动提醒。'
             }}
           </p>
@@ -243,7 +247,13 @@ onUnmounted(() => window.removeEventListener('sc:focus', onFocusEvent))
         />
         <div class="composer-bar">
           <span class="composer-hint">
-            {{ isGuest ? '游客模式：对话不会保存' : useRag ? '回答会引用本地资料' : '仅用模型自身知识' }}
+            {{
+              isGuest
+                ? `游客 · 免费模型剩 ${gq?.left ?? 0}/${gq?.limit ?? 0} 次/时 · 对话不保存`
+                : useRag
+                  ? '回答会引用本地资料'
+                  : '仅用模型自身知识'
+            }}
           </span>
           <button class="send" :disabled="!input.trim() || loading" title="发送" @click="send()">
             <AppIcon name="send" :size="15" />

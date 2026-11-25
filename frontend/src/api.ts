@@ -37,6 +37,17 @@ export interface Quota {
   remaining: number
 }
 
+/** 游客免费模型的每小时余量，后端按滑动窗口算 */
+export interface GuestQuota {
+  model: string
+  limit: number
+  total: number
+  used: number
+  left: number
+  window: number
+  reset_in: number
+}
+
 /** 三档权限和本地授权状态，界面上的锁都看它 */
 export interface LicenseInfo {
   tier: Tier
@@ -52,6 +63,7 @@ export interface LicenseInfo {
   llm?: { limit: number; busy: number; waiting: number }
   scheduler?: { interval: number; stagger: number; queue: { workers: number; queued: number; done: number } }
   tiers?: { name: Tier; label: string; desc: string }[]
+  guest_quota?: GuestQuota
   feature?: string
 }
 
@@ -187,6 +199,7 @@ export const api = {
       contexts: { source: string; text: string }[]
       should_notify: boolean
       tier: Tier
+      quota?: GuestQuota // 游客才有，答完顺手带回来
     }>('/chat', { method: 'POST', body: JSON.stringify(body) }),
 
   // 托管任务
