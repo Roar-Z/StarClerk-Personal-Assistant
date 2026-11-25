@@ -17,7 +17,7 @@ const cfg = reactive<any>({
   hotkey: '<ctrl>+<alt>+<space>',
 })
 const providers = ref<Record<string, any>>({})
-// 游客实际调的是哪个免费模型，后端在 /config 里一起给
+// 未登录实际调的是哪个免费模型，后端在 /config 里一起给
 const guestModel = ref<{ label: string; model: string; hourly: number } | null>(null)
 const saving = ref(false)
 const testing = ref(false)
@@ -25,7 +25,22 @@ const rebuilding = ref(false)
 const status = ref<{ ok: boolean; text: string } | null>(null)
 const code = ref('')
 const activating = ref(false)
+const freeBusy = ref(false)
 const perfBusy = ref(false)
+
+async function doFreeActivate() {
+  freeBusy.value = true
+  try {
+    await api.activateFree()
+    await loadLicense()
+    await loadSessions()
+    ElMessage.success('免费版已开，所有功能都能用了')
+  } catch {
+    /* 失败提示在 api 层 */
+  } finally {
+    freeBusy.value = false
+  }
+}
 
 async function doActivate() {
   const text = code.value.trim()
@@ -61,7 +76,7 @@ async function backToGuest() {
     await api.resetLicense()
     await loadLicense()
     await loadSessions()
-    ElMessage.success('已退回游客模式')
+    ElMessage.success('已退回未登录模式')
   } catch {
     /* 同上 */
   }
@@ -96,7 +111,7 @@ async function load() {
 }
 
 async function save() {
-  if (isGuest.value) return ElMessage.warning('游客不能改模型，激活后就能自己填')
+  if (isGuest.value) return ElMessage.warning('未登录不能改模型，激活后就能自己填')
   saving.value = true
   try {
     const body = { ...cfg }
@@ -148,7 +163,7 @@ onMounted(load)
         <span class="page-sub">写在本机 .env</span>
       </div>
       <el-button v-if="!isGuest" size="small" type="primary" :loading="saving" @click="save">保存</el-button>
-      <span v-else class="page-sub">游客只读</span>
+      <span v-else class="page-sub">未登录只读</span>
     </header>
 
     <div class="page-body sc-scroll">
@@ -161,22 +176,28 @@ onMounted(load)
           <div class="card-body">
             <div class="lic-head">
               <div>
-                <p class="lic-name">{{ me?.label || '游客' }}</p>
+                <p class="lic-name">{{ me?.label || '未登录' }}</p>
                 <span class="lic-sub">
-                  任务 {{ me?.limits.tasks ?? 0 }} · 文档 {{ me?.limits.docs ?? 0 }} · 记忆
-                  {{ me?.limits.memories ?? 0 }}
+                  任务 {{ me?.limits.tasks ?? 0 }} · 文档 {{ me?.limits.docs ?? 0 }} · 笔记
+                  {{ me?.limits.notes ?? 0 }} · 记忆 {{ me?.limits.memories ?? 0 }}
                 </span>
               </div>
-              <el-button v-if="me && !me.is_guest" link size="small" @click="backToGuest">退回游客</el-button>
+              <el-button v-if="me && !me.is_guest" link size="small" @click="backToGuest">退回未登录</el-button>
             </div>
-            <div v-if="!me?.is_pro" class="lic-input">
+            <div v-if="me?.is_guest" class="lic-input">
+              <el-button size="small" type="primary" :loading="freeBusy" @click="doFreeActivate">
+                一键免费激活
+              </el-button>
+              <span class="lic-sub">不用码，点一下就切到免费版</span>
+            </div>
+            <div v-if="me?.is_guest" class="lic-input">
               <el-input
                 v-model="code"
                 size="small"
-                placeholder="粘贴激活码，如 FREE-2024AB-1A2B"
+                placeholder="也有激活码？贴这儿"
                 @keyup.enter="doActivate"
               />
-              <el-button size="small" type="primary" :loading="activating" @click="doActivate">激活</el-button>
+              <el-button size="small" :loading="activating" @click="doActivate">用激活码</el-button>
             </div>
             <div class="lic-row">
               <div>
@@ -196,7 +217,7 @@ onMounted(load)
         <section class="card">
           <div class="card-head">
             <span class="card-title">对话模型</span>
-            <span class="card-hint">{{ isGuest ? '游客固定' : 'OpenAI 兼容' }}</span>
+            <span class="card-hint">{{ isGuest ? '未登录固定' : 'OpenAI 兼容' }}</span>
           </div>
 
           <div v-if="isGuest" class="card-body">
@@ -208,7 +229,7 @@ onMounted(load)
               <span class="tag tier-guest">每小时 {{ guestModel?.hourly ?? 0 }} 次</span>
             </div>
             <p class="muted-line mt8">
-              游客只能用这个免费模型，额度是免费档的一半，另一半留给激活后的用户。激活后可以换成自己的服务商、地址和 Key。
+              未登录只能用这个免费模型，额度是免费版的一半。免费激活后可以换成自己的服务商、地址和 Key。
             </p>
           </div>
 
@@ -270,7 +291,7 @@ onMounted(load)
             <span class="card-hint">Ollama + bge-m3</span>
           </div>
           <div class="card-body">
-            <p v-if="isGuest" class="muted-line">游客模式只读，这些参数激活后才能改。</p>
+            <p v-if="isGuest" class="muted-line">未登录模式只读，这些参数激活后才能改。</p>
             <div class="form-row">
               <label>服务地址</label>
               <el-input

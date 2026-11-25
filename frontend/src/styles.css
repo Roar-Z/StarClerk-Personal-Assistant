@@ -220,10 +220,6 @@ body {
 .nav-tier.tier-free {
   color: var(--sc-accent);
 }
-.nav-tier.tier-pro {
-  color: var(--sc-text);
-  font-weight: 600;
-}
 .nav-link {
   border: 0;
   background: transparent;
@@ -569,7 +565,7 @@ body {
   cursor: default;
 }
 
-/* 档位标签：游客灰、免费蓝、Pro 近黑底白字，克制一点别抢眼 */
+/* 档位标签：未登录灰、免费版蓝，克制一点别抢眼 */
 .tag.tier-guest {
   color: var(--sc-muted);
 }
@@ -577,11 +573,6 @@ body {
   color: var(--sc-accent);
   border-color: rgba(58, 86, 212, 0.28);
   background: rgba(58, 86, 212, 0.06);
-}
-.tag.tier-pro {
-  color: #fff;
-  background: var(--sc-text);
-  border-color: var(--sc-text);
 }
 
 /* Element Plus 微调 */

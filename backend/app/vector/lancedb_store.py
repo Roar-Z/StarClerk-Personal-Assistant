@@ -1,7 +1,7 @@
 """LanceDB 本地向量库：documents（资料分块，带工作区）+ memories（长期记忆）。
 
 嵌入式模式，不用起服务，数据在 data/lancedb。
-工作区是多知识库功能（Pro），免费版统一用 default。
+工作区是多知识库功能，未登录统一用 default。
 """
 from __future__ import annotations
 

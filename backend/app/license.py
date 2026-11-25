@@ -1,12 +1,13 @@
-"""本地授权：guest / free / pro 三档，纯离线校验，不联网。
+"""本地授权：未登录 guest / 免费版 free 两档，纯离线校验，不联网。
 
 两层存储，各有用途：
 - SQLite 的 license 表是"真的状态"，接口增删改都走它；
 - data/license.json 是给人看的备份，把文件拷到另一台机器也能读到档位，
   所以启动时先读库，库里是空的再读这份 json 兜底。
 
-激活码格式：FREE-XXXXXX-YYYY / PRO-XXXXXX-YYYY
+激活码格式：FREE-XXXXXX-YYYY
 YYYY 是用固定盐算出来的 4 位校验码，所以码不能随便改字母，但也不需要联网。
+老版本签过的 PRO 码照样收，统一当免费版处理。
 """
 from __future__ import annotations
 
@@ -23,8 +24,16 @@ from .db import models as meta
 
 log = logging.getLogger("license")
 
-TIERS = ("guest", "free", "pro")
-RANK = {"guest": 0, "free": 1, "pro": 2}
+TIERS = ("guest", "free")
+RANK = {"guest": 0, "free": 1}
+
+
+def _normalize_tier(value: Any) -> str:
+    """老库里可能还存着 pro，读出来一律按免费版算。"""
+    t = str(value or "").strip().lower()
+    if t == "pro":
+        return "free"
+    return t if t in TIERS else "guest"
 
 # 并发上限写死 2：本地机器上再多线程一起打模型，显存和响应都会炸
 MAX_CONCURRENCY = 2
@@ -40,14 +49,18 @@ def _sign(body: str) -> str:
     return hashlib.sha1(raw).hexdigest()[:4].upper()
 
 
-def make_code(tier: str, seed: str = "000000") -> str:
+def make_code(tier: str = "free", seed: str = "000000") -> str:
     """生成一个可用的激活码，自己测试和 README 举例都用它。
 
-    统一转大写，不然用户手打小写字母就和签名对不上了。
+    现在只有免费版，传什么 tier 都是 FREE 码，参数留着是怕老脚本还这么调。
     """
-    tier = "pro" if tier == "pro" else "free"
-    body = f"{tier.upper()}-{seed.upper()}"
+    body = f"FREE-{seed.upper()}"
     return f"{body}-{_sign(body)}"
+
+
+def free_code() -> str:
+    """一键免费激活用的码，跟机器码绑一下，只是看着像回事，不联网也不校验机器。"""
+    return make_code("free", seed=_machine()[:6])
 
 
 def parse_code(code: str) -> str | None:
@@ -61,7 +74,7 @@ def parse_code(code: str) -> str | None:
         return None
     if sign != _sign(f"{tier}-{seed}"):
         return None
-    return tier.lower()
+    return "free"  # PRO 老码也按免费版认，别让人升级之后用不了
 
 
 def _machine() -> str:
@@ -90,7 +103,10 @@ def _from_json() -> dict[str, Any] | None:
         data = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    return data if data.get("tier") in TIERS else None
+    if not isinstance(data, dict):
+        return None
+    data["tier"] = _normalize_tier(data.get("tier"))
+    return data
 
 
 def _state() -> dict[str, Any]:
@@ -112,9 +128,15 @@ def _state() -> dict[str, Any]:
                 )
                 row = meta.license_get()
         row = row or {}
+        raw = str(row.get("tier") or "guest").lower()
+        if raw == "pro":
+            # 老版本升级上来，库里那行 pro 就地改成 free，别把人踢回未登录
+            meta.license_set("free", str(row.get("code") or ""), str(row.get("machine") or _machine()))
+            row = meta.license_get() or row
+            log.info("旧的 Pro 授权已转成免费版")
         _cache.update(
             {
-                "tier": row.get("tier") if row.get("tier") in TIERS else "guest",
+                "tier": _normalize_tier(row.get("tier")),
                 "code": row.get("code") or "",
                 "machine": row.get("machine") or _machine(),
                 "activated_at": float(row.get("activated_at") or 0),
@@ -122,6 +144,8 @@ def _state() -> dict[str, Any]:
                 "max_concurrency": MAX_CONCURRENCY,
             }
         )
+        if raw == "pro":
+            _dump_json(_cache)
         return _cache
 
 
@@ -154,7 +178,7 @@ def activate(code: str) -> dict[str, Any]:
 
 
 def reset() -> dict[str, Any]:
-    """退回游客模式，方便自己测三档的区别。"""
+    """退回未登录，方便自己试两档的区别。"""
     with _lock:
         meta.license_clear(_machine())
         _cache.clear()
@@ -178,9 +202,9 @@ def info() -> dict[str, Any]:
     limits = limits_for(state["tier"])
     return {
         "tier": state["tier"],
-        "label": {"guest": "游客", "free": "免费版", "pro": "Pro 版"}[state["tier"]],
+        "label": {"guest": "未登录", "free": "免费版"}[state["tier"]],
         "is_guest": state["tier"] == "guest",
-        "is_pro": state["tier"] == "pro",
+        "is_free": state["tier"] == "free",
         "code": state["code"],
         "activated_at": state["activated_at"],
         "machine": state["machine"],

@@ -628,11 +628,6 @@
   color: var(--sc-accent);
   border-color: rgba(58, 86, 212, 0.3);
 }
-.pill.tier-pro {
-  color: #fff;
-  background: var(--sc-text);
-  border-color: var(--sc-text);
-}
 .sys-name {
   display: flex;
   align-items: baseline;

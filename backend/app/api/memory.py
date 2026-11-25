@@ -1,6 +1,6 @@
 """memory 分组：长期记忆的增删查（SQLite 存原文，LanceDB 存向量）。
 
-免费版：查看、手动添加、单条删除；Pro 才有分组和备份导入导出。
+免费版：查看、添加、删除、分组、备份导入导出、画像整理都能用。
 """
 from __future__ import annotations
 
@@ -64,8 +64,8 @@ async def remove(mid: str):
     return {"ok": True}
 
 
-# ---------------- Pro：分组 ----------------
-@router.get("/groups", summary="记忆分组（Pro）")
+# ----------------分组 ----------------
+@router.get("/groups", summary="记忆分组")
 def groups():
     rows = meta.memory_groups()
     for r in rows:
@@ -73,7 +73,7 @@ def groups():
     return {"items": rows, "ungrouped": meta.count_memories("") - sum(r["n"] for r in rows if r["name"] != "未分组")}
 
 
-@router.patch("/{mid}/group", summary="给记忆分组（Pro）")
+@router.patch("/{mid}/group", summary="给记忆分组")
 def move_group(mid: str, body: GroupIn):
     access.require("memory_group")  # 路径在 /memory 下，中间件按功能分不出来
     if not db.row("SELECT id FROM memories WHERE id=?", (mid,)):
@@ -82,8 +82,8 @@ def move_group(mid: str, body: GroupIn):
     return {"ok": True, "group": body.group.strip() or "未分组"}
 
 
-# ---------------- Pro：备份 ----------------
-@router.get("/backup", summary="导出记忆备份（Pro）")
+# ----------------备份 ----------------
+@router.get("/backup", summary="导出记忆备份")
 def backup():
     rows = [
         {"content": r["content"], "kind": r["kind"], "group": r["group_name"]}
@@ -97,7 +97,7 @@ def backup():
     )
 
 
-@router.post("/backup", summary="导入记忆备份（Pro，按内容去重）")
+@router.post("/backup", summary="导入记忆备份（按内容去重）")
 async def restore(items: list[dict[str, Any]]):
     access.check_limit("memories", meta.count_memories())
     have = {r["content"] for r in meta.list_memories(2000)}
@@ -116,13 +116,13 @@ async def restore(items: list[dict[str, Any]]):
     return {"ok": True, "added": added, "skipped": len(items) - added}
 
 
-# ---------------- Pro：画像 / 自动归类 / 定期总结 ----------------
-@router.get("/profile", summary="画像与分组概览（Pro）")
+# ----------------画像 / 自动归类 / 定期总结 ----------------
+@router.get("/profile", summary="画像与分组概览")
 def profile():
     return meta.memory_profile()
 
 
-@router.post("/organize", summary="给没归组的记忆自动起组（Pro）")
+@router.post("/organize", summary="给没归组的记忆自动起组")
 async def organize():
     """按 kind 先分堆，再让模型给每堆起个短名字。逐条让模型归类太烧 token，也不准。"""
     from ..llm import client
@@ -157,7 +157,7 @@ async def organize():
     return {"ok": True, "moved": moved, "groups": groups}
 
 
-@router.post("/summarize", summary="把现有记忆总结成一条（Pro）")
+@router.post("/summarize", summary="把现有记忆总结成一条")
 async def summarize():
     from ..llm import client
 

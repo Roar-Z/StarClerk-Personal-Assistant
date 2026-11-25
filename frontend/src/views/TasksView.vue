@@ -3,7 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import AppIcon from '../components/AppIcon.vue'
 import { api, download, type Quota, type Task, type TaskLog } from '../api'
-import { isPro } from '../store'
+import { isFree } from '../store'
 
 const tasks = ref<Task[]>([])
 const quota = ref<Quota>()
@@ -13,7 +13,7 @@ const result = ref<{ title: string; body: string } | null>(null)
 // url 可选：填了就每次先抓一遍网页，正文没变就不打模型
 const form = reactive({ name: '', prompt: '', url: '', cron_minutes: 60 })
 
-// 巡检历史：默认拉最近 20 条，导出是 Pro
+// 巡检历史：默认拉最近 20 条，可以导出 CSV
 const logs = ref<TaskLog[]>([])
 const logOpen = ref(false)
 
@@ -152,7 +152,7 @@ onMounted(refresh)
 
         <p class="muted-line">
           到点的任务先进队列，隔几秒跑一个，不会同时打模型；有异常才弹提醒。
-          <template v-if="!quota?.is_pro">免费版最多 5 个，Pro 可以到 20 个。</template>
+          免费版最多 20 个。
         </p>
       </div>
     </div>
@@ -167,7 +167,7 @@ onMounted(refresh)
         <p v-if="!logs.length" class="empty">还没有执行记录</p>
       </div>
       <template #footer>
-        <el-button v-if="isPro" size="small" @click="download('/tasks/logs/export')">导出 CSV</el-button>
+        <el-button v-if="isFree" size="small" @click="download('/tasks/logs/export')">导出 CSV</el-button>
         <el-button size="small" type="primary" @click="logOpen = false">关闭</el-button>
       </template>
     </el-dialog>

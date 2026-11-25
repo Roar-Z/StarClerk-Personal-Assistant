@@ -1,4 +1,4 @@
-"""mindmap 分组：长文档思维导图（Pro），生成后存 md 文件，导出就是把文件发回去。"""
+"""mindmap 分组：长文档思维导图，生成后存 md 文件，导出就是把文件发回去。"""
 from __future__ import annotations
 
 import asyncio
@@ -24,7 +24,7 @@ def recent():
     return mindmap.recent()
 
 
-@router.post("", summary="生成思维导图（Pro）")
+@router.post("", summary="生成思维导图")
 async def create(body: MindIn):
     try:
         return await asyncio.to_thread(mindmap.generate, body.text, body.doc_id, body.title)
@@ -34,7 +34,7 @@ async def create(body: MindIn):
         raise failure("mindmap", e) from e
 
 
-@router.get("/{mid}/export", summary="导出 Markdown 思维导图（Pro）")
+@router.get("/{mid}/export", summary="导出 Markdown 思维导图")
 def export(mid: str):
     path = mindmap.path_of(mid)
     if not path:

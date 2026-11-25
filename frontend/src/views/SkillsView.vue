@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, download, type Skill } from '../api'
-import { isPro } from '../store'
 
 const items = ref<Skill[]>([])
 const cats = ref<string[]>([])
@@ -11,8 +10,6 @@ const editing = ref(false)
 const form = ref({ id: '', name: '', category: '', body: '' })
 const saving = ref(false)
 
-// 免费版只能看内置那几条，按钮灰掉但不藏起来，让人知道 Pro 能干什么
-const canWrite = computed(() => isPro.value)
 const shown = computed(() => (cat.value ? items.value.filter((s) => s.category === cat.value) : items.value))
 
 async function load() {
@@ -22,19 +19,11 @@ async function load() {
 }
 
 function openNew() {
-  if (!canWrite.value) {
-    ElMessage.warning('自定义模板是 Pro 功能')
-    return
-  }
   form.value = { id: '', name: '', category: cat.value || '通用', body: '' }
   editing.value = true
 }
 
 function openEdit(s: Skill) {
-  if (!canWrite.value) {
-    ElMessage.warning('内置模板在免费版里只能看')
-    return
-  }
   form.value = { id: s.id, name: s.name, category: s.category, body: s.body }
   editing.value = true
 }
@@ -118,7 +107,6 @@ onMounted(load)
     <div class="chips">
       <button :class="{ on: cat === '' }" @click="cat = ''">全部 {{ items.length }}</button>
       <button v-for="c in cats" :key="c" :class="{ on: cat === c }" @click="cat = c">{{ c }}</button>
-      <span v-if="!canWrite" class="pro-note">免费版只能看内置模板，Pro 可以自己加</span>
     </div>
 
     <div class="grid">
@@ -132,8 +120,8 @@ onMounted(load)
           <span class="used">用过 {{ s.use_count }} 次</span>
           <div class="ops">
             <button @click="use(s)">用</button>
-            <button :disabled="!canWrite" @click="openEdit(s)">改</button>
-            <button v-if="canWrite" class="danger" @click="remove(s)">删</button>
+            <button @click="openEdit(s)">改</button>
+            <button class="danger" @click="remove(s)">删</button>
           </div>
         </footer>
       </article>
@@ -197,11 +185,6 @@ onMounted(load)
   color: var(--sc-accent);
   background: rgba(58, 86, 212, 0.07);
   border-color: rgba(58, 86, 212, 0.28);
-}
-.pro-note {
-  margin-left: auto;
-  font-size: 11.5px;
-  color: var(--sc-muted);
 }
 .grid {
   display: grid;

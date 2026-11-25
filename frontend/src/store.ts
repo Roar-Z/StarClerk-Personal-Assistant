@@ -9,7 +9,7 @@ export const me = ref<LicenseInfo | null>(null)
 
 export const activeSession = computed(() => sessions.value.find((s) => s.id === activeId.value))
 export const isGuest = computed(() => me.value?.tier === 'guest')
-export const isPro = computed(() => me.value?.tier === 'pro')
+export const isFree = computed(() => me.value?.tier === 'free')
 
 export async function loadLicense() {
   try {

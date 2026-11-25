@@ -100,7 +100,7 @@ npm run build                           # 产物交给 FastAPI 托管，直接�
 | 记忆 | 手动加一条、逐条删除；对话里说“记住…”也会自动写入 |
 | 资料库 | 选文件上传（txt/md/csv/log/json）、粘贴文本、按文档删除 |
 | 模型 | 厂商预设、Key、embedding、断网降级、重建索引，保存写回 `.env` |
-| 用量 | 7/30 天 token（按场景/模型/每天）、免费 ↔ Pro 切换 |
+| 用量 | 7/30 天 token（按场景/模型/每天）、按会话/任务拆解 |
 
 请求只走 `src/api.ts` 的 `req()`：非 2xx 取后端 `detail` 弹一次提示（600ms 内不重复），超时 180s 单独提示，页面里只管 loading 和列表状态。
 
@@ -145,7 +145,7 @@ START → recall ─→ plan ─┬─(有工具调用)→ act ─┬─(还有�
 | | `GET /api/chat/sessions`、`POST /api/chat/sessions` | `{title}` → 会话对象 |
 | | `GET /api/chat/sessions/{sid}/messages`、`DELETE /api/chat/sessions/{sid}` | 消息数组 / `{ok}` |
 | task | `GET /api/tasks`、`POST /api/tasks` | `{name, prompt, cron_minutes, doc_scope?}` → 任务；超额 409 |
-| | `GET /api/tasks/quota` | → `{plan, is_pro, limit, used, remaining}` |
+| | `GET /api/tasks/quota` | → `{plan, is_guest, limit, used, remaining}` |
 | | `PATCH /api/tasks/{id}`、`DELETE /api/tasks/{id}` | `{enabled}` → 任务 / `{ok}` |
 | | `POST /api/tasks/{id}/run` | → `{result, should_notify, level, notice, elapsed_ms}` |
 | memory | `GET /api/memory`、`POST /api/memory`、`DELETE /api/memory/{id}` | `{content, kind?}` → 记忆（向量失败仍保留文本） |
@@ -156,7 +156,7 @@ START → recall ─→ plan ─┬─(有工具调用)→ act ─┬─(还有�
 | | `GET /api/stats/usage?days=7` | `{totals, by_scope, by_model, daily}`（来自 SQLite `usage` 表） |
 | | `GET /api/stats/errors?limit=30` | 最近异常（接口/调度捕获后入库） |
 | config | `GET /api/config`、`PUT /api/config` | 配置（Key 掩码）；写回 `.env`，重启生效 |
-| | `GET/PUT /api/config/plan` | `{plan: free\|pro}` → 额度；本地开关，无支付 |
+| | `GET /api/config/plan` | `{plan: guest\|free}` → 额度；本地授权，无支付 |
 | | `GET /api/config/providers`、`POST /api/config/test`、`POST /api/config/rebuild-vector` | 预设 / 连通性 / 重建索引 |
 
 其它：`GET /api/health`、`GET /api/events`（SSE，推送巡检提醒）。

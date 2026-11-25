@@ -1,4 +1,4 @@
-"""三档权限：一张功能表 + 一张路由表，中间件照着表拦。
+"""两档权限：一张功能表 + 一张路由表，中间件照着表拦。
 
 思路很简单：先把每个接口归到一个"功能"上，再给功能定最低档位。
 中间件在进路由之前查表，越权直接 403，接口里就不用到处写 if 了；
@@ -22,20 +22,20 @@ FEATURES: dict[str, str] = {
     "memory": "free",  # 基础长期记忆
     "rag": "free",  # 轻量知识库
     "usage": "free",  # token 用量
-    "mindmap": "pro",  # 长文档思维导图
-    "workspace": "pro",  # 多知识库工作区
-    "extract": "pro",  # 票据抽取
-    "batch": "pro",  # 文档批量导入导出
-    "batch_ai": "pro",  # 批量摘要 / 翻译 / 表格
-    "memory_group": "pro",  # 记忆分组 / 归档
-    "memory_backup": "pro",  # 记忆备份导入导出
-    "profile": "pro",  # 画像与智能整理
-    "note": "pro",  # 笔记知识库
-    "skill_view": "free",  # 内置模板只读也给免费版看
-    "skill_write": "pro",  # 新建/编辑/导入导出
-    "log_export": "pro",  # 巡检日志导出
-    "migrate": "pro",  # 数据迁移
-    "usage_detail": "pro",  # 按会话/任务拆用量、告警
+    "mindmap": "free",  # 长文档思维导图
+    "workspace": "free",  # 多知识库工作区
+    "extract": "free",  # 票据抽取
+    "batch": "free",  # 文档批量导入导出
+    "batch_ai": "free",  # 批量摘要 / 翻译 / 表格
+    "memory_group": "free",  # 记忆分组 / 归档
+    "memory_backup": "free",  # 记忆备份导入导出
+    "profile": "free",  # 画像与智能整理
+    "note": "free",  # 笔记知识库
+    "skill_view": "free",  # 内置模板只读
+    "skill_write": "free",  # 新建/编辑/导入导出
+    "log_export": "free",  # 巡检日志导出
+    "migrate": "free",  # 数据迁移
+    "usage_detail": "free",  # 按会话/任务拆用量、告警
 }
 
 # (方法, 路径前缀, 功能)；从上往下匹配，命中第一条就停
@@ -80,11 +80,8 @@ RULES: tuple[tuple[str, str, str], ...] = (
 # 各档位的数量上限，超出就 409，别让一个免费用户塞满向量库
 LIMITS: dict[str, dict[str, int]] = {
     "guest": {"tasks": 0, "docs": 0, "memories": 0, "notes": 0},
-    "free": {"tasks": 5, "docs": 5, "memories": 200, "notes": 0},
-    "pro": {"tasks": 20, "docs": 500, "memories": 2000, "notes": 500},
+    "free": {"tasks": 20, "docs": 500, "memories": 2000, "notes": 500},
 }
-
-_NEED_LABEL = {"free": "免费版", "pro": "Pro 版"}
 
 
 def limits_for(tier: str | None = None) -> dict[str, int]:
@@ -92,9 +89,9 @@ def limits_for(tier: str | None = None) -> dict[str, int]:
 
 
 def allowed(feature: str, tier: str | None = None) -> bool:
-    need = FEATURES.get(feature, "pro")
+    need = FEATURES.get(feature, "free")
     now = tier or license.tier()
-    return license.RANK.get(now, 0) >= license.RANK.get(need, 2)
+    return license.RANK.get(now, 0) >= license.RANK.get(need, 1)
 
 
 def feature_of(method: str, path: str) -> str | None:
@@ -115,15 +112,14 @@ def require(feature: str) -> None:
     """接口内部再确认一次，主要给额度相关的分支用。"""
     if allowed(feature):
         return
-    need = FEATURES.get(feature, "pro")
-    raise HTTPException(403, f"{_NEED_LABEL.get(need, '更高')}才有这个功能，到「模型 → 授权」里激活")
+    raise HTTPException(403, "未登录用不了这个功能，到「模型 → 授权」里免费激活")
 
 
 def check_limit(kind: str, used: int) -> None:
     """数量类限制：任务数、文档数、记忆条数共用一个出口。"""
     limit = limits_for().get(kind, 0)
     if used >= limit:
-        raise HTTPException(409, f"当前档位{kind}最多 {limit} 个，删掉旧的或者激活更高档位")
+        raise HTTPException(409, f"{kind}最多 {limit} 个，删掉旧的再试")
 
 
 async def guard(request: Request, call_next):
@@ -132,10 +128,10 @@ async def guard(request: Request, call_next):
     if path.startswith("/api/"):
         feature = feature_of(request.method, path)
         if feature and not allowed(feature):
-            need = FEATURES.get(feature, "pro")
+            need = FEATURES.get(feature, "free")
             return JSONResponse(
                 {
-                    "detail": f"{_NEED_LABEL.get(need, '更高档位')}才有这个功能，到「模型 → 授权」里激活",
+                    "detail": "未登录用不了这个功能，到「模型 → 授权」里免费激活",
                     "feature": feature,
                     "need": need,
                     "tier": license.tier(),

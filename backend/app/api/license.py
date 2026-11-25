@@ -31,9 +31,12 @@ def info():
     if data.get("is_guest"):
         data["guest_quota"] = quota.snapshot()
     data["tiers"] = [
-        {"name": "guest", "label": "游客", "desc": "对话可用，会话不保存，不开放知识库/任务/记忆"},
-        {"name": "free", "label": "免费版", "desc": "会话持久化、轻量知识库、5 个巡检任务、基础记忆"},
-        {"name": "pro", "label": "Pro 版", "desc": "思维导图、多工作区、票据抽取、记忆分组、日志导出"},
+        {"name": "guest", "label": "未登录", "desc": "只能对话，用免费模型，会话不保存，不开放知识库/任务/记忆"},
+        {
+            "name": "free",
+            "label": "免费版",
+            "desc": "所有功能开放：会话持久化、20 个巡检任务、500 份资料、500 条笔记、思维导图、数据迁移",
+        },
     ]
     return data
 
@@ -47,7 +50,12 @@ def activate(body: CodeIn):
     return data
 
 
-@router.delete("", summary="退回游客模式")
+@router.post("/free", summary="一键免费激活（本地生成激活码）")
+def activate_free():
+    return license.activate(license.free_code())
+
+
+@router.delete("", summary="退回未登录")
 def reset():
     return license.reset()
 

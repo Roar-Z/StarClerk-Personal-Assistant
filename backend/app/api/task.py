@@ -1,6 +1,6 @@
 """task 分组：托管巡检任务 CRUD + 手动执行 + 巡检日志。
 
-额度按档位算：游客 0 个，免费 5 个，Pro 20 个（见 access.LIMITS）。
+额度按档位算：未登录 0 个，免费版 20 个（见 access.LIMITS）。
 """
 from __future__ import annotations
 
@@ -55,15 +55,15 @@ def quota():
     return info
 
 
-@router.get("/logs", summary="巡检历史（免费版起，Pro 可导出）")
+@router.get("/logs", summary="巡检历史（免费版起，可导出 CSV）")
 def logs(task_id: str = "", limit: int = 50):
     rows = meta.list_task_logs(task_id, max(1, min(limit, 200)))
     for r in rows:
         r["ok"] = bool(r["ok"])
-    return {"items": rows, "total": meta.count_task_logs(task_id), "exportable": license.tier() == "pro"}
+    return {"items": rows, "total": meta.count_task_logs(task_id), "exportable": not license.is_guest()}
 
 
-@router.get("/logs/export", summary="导出巡检日志 CSV（Pro）")
+@router.get("/logs/export", summary="导出巡检日志 CSV")
 def export_logs(task_id: str = ""):
     access.require("log_export")
     rows = meta.list_task_logs(task_id, 500)

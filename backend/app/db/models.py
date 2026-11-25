@@ -195,7 +195,6 @@ def plan_info() -> dict[str, Any]:
     return {
         "plan": tier,
         "tier": tier,
-        "is_pro": tier == "pro",
         "is_guest": tier == "guest",
         "limit": limit,
         "used": used,
@@ -209,6 +208,9 @@ def license_get() -> dict[str, Any] | None:
 
 
 def license_set(tier: str, code: str, machine: str) -> None:
+    # 从旧迁移包导入时可能还是 pro，落到库里统一算免费版
+    if str(tier).lower() == "pro":
+        tier = "free"
     t = db.now()
     db.exec_sql(
         """INSERT INTO license(id,tier,code,machine,activated_at,updated_at) VALUES(1,?,?,?,?,?)

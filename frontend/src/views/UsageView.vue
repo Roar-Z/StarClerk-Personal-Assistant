@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type UsageSummary } from '../api'
-import { isPro } from '../store'
+import { isFree } from '../store'
 
 const days = ref(7)
 const summary = ref<UsageSummary>()
 const overview = ref<any>()
-// Pro 才有：哪个会话、哪条任务更费 token
+// 按会话、按任务拆开看，哪块更费 token
 const detail = ref<Awaited<ReturnType<typeof api.usageDetail>>>()
 
 const totals = computed(() => summary.value?.totals)
@@ -20,7 +20,7 @@ async function load() {
   } catch {
     /* 统一提示已处理 */
   }
-  if (isPro.value) {
+  if (isFree.value) {
     try {
       detail.value = await api.usageDetail(days.value)
     } catch {
@@ -125,7 +125,7 @@ onMounted(load)
           </div>
         </div>
 
-        <template v-if="isPro && detail">
+        <template v-if="isFree && detail">
           <div v-if="detail.alert.over" class="alert-bar">
             近 {{ detail.alert.days }} 天已经用掉 {{ fmt(detail.alert.used) }} token，超过 {{ fmt(detail.alert.limit) }} 的预警线了，留意一下费用。
           </div>
@@ -163,18 +163,18 @@ onMounted(load)
         <div class="card">
           <div class="card-head">
             <span class="card-title">档位</span>
-            <span class="card-hint">{{ overview?.license?.label || '游客' }}</span>
+            <span class="card-hint">{{ overview?.license?.label || '未登录' }}</span>
           </div>
           <div class="card-body">
             <div class="plan-row">
               <div>
-                <p class="plan-name">{{ overview?.license?.label || '游客' }}</p>
+                <p class="plan-name">{{ overview?.license?.label || '未登录' }}</p>
                 <p class="muted-line">
                   任务 {{ overview?.plan?.used || 0 }} / {{ overview?.plan?.limit || 0 }} · 模型并发
                   {{ overview?.llm_gate?.limit || 2 }} 路（占用 {{ overview?.llm_gate?.busy || 0 }}）
                 </p>
               </div>
-              <button v-if="!overview?.license?.is_pro" class="btn-dark" @click="goLicense">去激活</button>
+              <button v-if="overview?.license?.is_guest" class="btn-dark" @click="goLicense">去激活</button>
             </div>
             <p class="muted-line" style="margin: 10px 0 0">
               档位只存在本机，不联网校验；异常 {{ overview?.errors_24h || 0 }} 条（24h）。

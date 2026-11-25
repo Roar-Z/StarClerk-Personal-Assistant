@@ -15,7 +15,7 @@ import NotesView from './views/NotesView.vue'
 import SkillsView from './views/SkillsView.vue'
 import HelpView from './views/HelpView.vue'
 import MigrateView from './views/MigrateView.vue'
-import { isGuest, loadLicense, loadSessions, me } from './store'
+import { loadLicense, loadSessions, me } from './store'
 import { api, type Tier } from './api'
 
 type Tab =
@@ -31,7 +31,7 @@ type Tab =
   | 'migrate'
   | 'sys'
 
-const RANK: Record<Tier, number> = { guest: 0, free: 1, pro: 2 }
+const RANK: Record<Tier, number> = { guest: 0, free: 1 }
 
 // 用 hash 记住当前页，刷新或者从托盘唤起时不至于跳回对话
 const fromHash = (location.hash.replace('#', '') || 'chat') as Tab
@@ -49,12 +49,12 @@ const tabs = [
   { key: 'tasks', icon: 'tasks', label: '任务', min: 'free', group: '工作台' },
   { key: 'memory', icon: 'memory', label: '记忆', min: 'free', group: '工作台' },
   { key: 'kb', icon: 'knowledge', label: '资料', min: 'free', group: '工作台' },
-  { key: 'notes', icon: 'note', label: '笔记', min: 'pro', group: '工作台' },
+  { key: 'notes', icon: 'note', label: '笔记', min: 'free', group: '工作台' },
   { key: 'skills', icon: 'key', label: '技能', min: 'free', group: '工作台' },
   { key: 'model', icon: 'settings', label: '模型', min: 'guest', group: '设置' },
   { key: 'usage', icon: 'usage', label: '用量', min: 'free', group: '设置' },
   { key: 'help', icon: 'help', label: '帮助', min: 'guest', group: '设置' },
-  { key: 'migrate', icon: 'book', label: '迁移', min: 'pro', group: '设置' },
+  { key: 'migrate', icon: 'book', label: '迁移', min: 'free', group: '设置' },
   { key: 'sys', icon: 'shield', label: '系统', min: 'guest', group: '设置' },
 ] as const
 
@@ -73,17 +73,16 @@ const locked = computed(() => {
 })
 const lockMeta = computed(() => ({
   title: tabs.find((x) => x.key === tab.value)?.label || '',
-  need: isGuest.value ? ('free' as const) : ('pro' as const),
-  desc: isGuest.value
-    ? '游客模式只开放对话和模型配置，激活后会话才会保存到本地，知识库和托管任务也会跟着开放。'
-    : '这个功能在 Pro 版里，激活后可以用思维导图、多工作区、记忆分组和日志导出。',
+  need: 'free' as const,
+  desc: '未登录只能对话，模型走免费网关、聊完不留记录。免费激活后所有功能都开着，不用再升级。',
 }))
 
-const lockPoints = computed(() =>
-  isGuest.value
-    ? ['会话本地保存，可搜索导出', '轻量知识库（5 份文档）', '5 个托管巡检任务', '基础长期记忆与用量']
-    : ['长文档思维导图', '多知识库工作区', '记忆分组与备份', '巡检日志导出'],
-)
+const lockPoints = computed(() => [
+  '会话保存到本地，可搜索、可导出',
+  '知识库最多 500 份文档，支持多工作区',
+  '20 个托管巡检任务，日志可导出',
+  '记忆画像、思维导图、笔记模板和数据迁移',
+])
 
 function tabNeed(key: string) {
   return tabs.find((x) => x.key === key)?.min || 'guest'

@@ -33,7 +33,7 @@ const sq = ref('')
 const found = ref<Session[] | null>(null)
 
 const title = computed(() => activeSession.value?.title || '新对话')
-// 游客的免费模型余量，发一条消息后端会带最新的回来
+// 未登录的免费模型余量，发一条消息后端会带最新的回来
 const gq = computed(() => me.value?.guest_quota)
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -55,7 +55,7 @@ async function loadMessages(id: string) {
     list.value = []
     return
   }
-  // 游客的对话只在当前内存里，别去后端拉，拉回来是空的
+  // 未登录的对话只在当前内存里，别去后端拉，拉回来是空的
   if (isGuest.value) return
   try {
     list.value = await api.messages(id)
@@ -78,10 +78,10 @@ function onEnter(e: KeyboardEvent) {
   if (e.isComposing) return
   send()
 }
-// 游客的几段对话都放这里，切来切去还能看到刚才聊的
+// 未登录的几段对话都放这里，切来切去还能看到刚才聊的
 const guestMsgs = new Map<string, Msg[]>()
 
-/** 回完之后收个尾：游客把内存会话补进列表，付费用户重新拉一遍 */
+/** 回完之后收个尾：未登录把内存会话补进列表，付费用户重新拉一遍 */
 async function settle(sid: string, content: string) {
   activeId.value = sid
   if (isGuest.value) {
@@ -107,7 +107,7 @@ async function send(text?: string) {
   if (!content || loading.value) return
   input.value = ''
   autoGrow()
-  // 游客不建会话，第一条消息发出去时后端会顺手建一个内存会话并把 id 带回来
+  // 未登录不建会话，第一条消息发出去时后端会顺手建一个内存会话并把 id 带回来
   if (!activeId.value && !isGuest.value) await createSession()
   list.value.push({ id: `t${Date.now()}`, role: 'user', content, created_at: Date.now() / 1000 })
   scroll()
@@ -258,7 +258,7 @@ async function searchSessions() {
 async function newChat() {
   menu.value = false
   if (isGuest.value) {
-    // 游客只在内存里开一段新对话，刷新后自然就没了
+    // 未登录只在内存里开一段新对话，刷新后自然就没了
     if (activeId.value && list.value.length) guestMsgs.set(activeId.value, [...list.value])
     activeId.value = ''
     list.value = []
@@ -328,7 +328,7 @@ onUnmounted(() => {
             <AppIcon name="plus" :size="13" />
             <span>新建对话</span>
           </button>
-          <!-- 搜的是消息正文，不只是标题；游客没有历史会话，就别摆这个框 -->
+          <!-- 搜的是消息正文，不只是标题；未登录没有历史会话，就别摆这个框 -->
           <label v-if="!isGuest" class="sess-find">
             <AppIcon name="search" :size="12" />
             <input v-model="sq" type="text" placeholder="搜聊天记录" @input="searchSessions" />
@@ -389,7 +389,7 @@ onUnmounted(() => {
           <p>
             {{
               isGuest
-                ? `游客用 Kilo 免费模型，每小时 ${gq?.limit ?? 0} 次；激活后能换自己的模型，额度也是现在的两倍。`
+                ? `未登录用 Kilo 免费模型，每小时 ${gq?.limit ?? 0} 次；激活后能换自己的模型，额度也是现在的两倍。`
                 : '可以检索本地资料、记住你说过的事，也会在后台定时巡检后主动提醒。'
             }}
           </p>
@@ -446,7 +446,7 @@ onUnmounted(() => {
             <span class="composer-hint">
               {{
                 isGuest
-                  ? `游客 · 免费模型剩 ${gq?.left ?? 0}/${gq?.limit ?? 0} 次/时 · 对话不保存`
+                  ? `未登录 · 免费模型剩 ${gq?.left ?? 0}/${gq?.limit ?? 0} 次/时 · 对话不保存`
                   : useRag
                     ? '回答会引用本地资料'
                     : '仅用模型自身知识'

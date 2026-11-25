@@ -1,7 +1,7 @@
 """本地 RAG 入库：文本切块 → 向量化 → LanceDB。
 
 MVP 只解析 .txt/.md/.csv/.log（PDF/Word 属后续增强，避免拉入重依赖）。
-workspace 先落在分块上，多工作区是 Pro 才开放的入口，免费版传空用 default。
+workspace 先落在分块上，传空就用 default。
 """
 from __future__ import annotations
 

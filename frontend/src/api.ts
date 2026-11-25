@@ -26,19 +26,18 @@ export interface Task {
   last_run_at?: number
   next_run_at?: number
 }
-export type Tier = 'guest' | 'free' | 'pro'
+export type Tier = 'guest' | 'free'
 
 export interface Quota {
   plan: Tier
   tier: Tier
-  is_pro: boolean
   is_guest: boolean
   limit: number
   used: number
   remaining: number
 }
 
-/** 游客免费模型的每小时余量，后端按滑动窗口算 */
+/** 未登录免费模型的每小时余量，后端按滑动窗口算 */
 export interface GuestQuota {
   model: string
   limit: number
@@ -49,18 +48,18 @@ export interface GuestQuota {
   reset_in: number
 }
 
-/** 三档权限和本地授权状态，界面上的锁都看它 */
+/** 两档权限和本地授权状态，界面上的锁都看它 */
 export interface LicenseInfo {
   tier: Tier
   label: string
   is_guest: boolean
-  is_pro: boolean
+  is_free: boolean
   code: string
   activated_at: number
   machine: string
   perf_mode: boolean
   max_concurrency: number
-  limits: { tasks: number; docs: number; memories: number }
+  limits: { tasks: number; docs: number; memories: number; notes: number }
   llm?: { limit: number; busy: number; waiting: number }
   scheduler?: { interval: number; stagger: number; queue: { workers: number; queued: number; done: number } }
   tiers?: { name: Tier; label: string; desc: string }[]
@@ -205,7 +204,7 @@ export const api = {
       contexts: { source: string; text: string }[]
       should_notify: boolean
       tier: Tier
-      quota?: GuestQuota // 游客才有，答完顺手带回来
+      quota?: GuestQuota // 未登录才有，答完顺手带回来
     }>('/chat', { method: 'POST', body: JSON.stringify(body) }),
 
   // 托管任务
@@ -263,7 +262,7 @@ export const api = {
       ok_count: number
     }>('/rag/batch-ai', { method: 'POST', body: JSON.stringify(body) }),
 
-  // 思维导图（Pro）
+  // 思维导图
   mindmaps: () => req<{ id: string; title: string; size: number }[]>('/mindmap'),
   mindmap: (body: { text?: string; doc_id?: string; title?: string }) =>
     req<MindMap>('/mindmap', { method: 'POST', body: JSON.stringify(body) }),
@@ -282,6 +281,7 @@ export const api = {
   license: () => req<LicenseInfo>('/license', undefined, true),
   activate: (code: string) =>
     req<LicenseInfo>('/license/activate', { method: 'POST', body: JSON.stringify({ code }) }),
+  activateFree: () => req<LicenseInfo>('/license/free', { method: 'POST' }),
   resetLicense: () => req<LicenseInfo>('/license', { method: 'DELETE' }),
   setPerf: (on: boolean) =>
     req<LicenseInfo>('/license/perf', { method: 'POST', body: JSON.stringify({ on }) }),
@@ -306,7 +306,7 @@ export const api = {
   pruneLogs: () => req<{ ok: boolean; removed: number }>('/system/logs', { method: 'DELETE' }),
   uninstall: () => req<{ ok: boolean; path: string }>('/system/uninstall', { method: 'POST' }),
 
-  // 笔记（Pro）
+  // 笔记
   notes: (q = '', category = '') =>
     req<{ items: Note[]; total: number; categories: { category: string; n: number }[] }>(
       `/notes?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`,
@@ -335,7 +335,7 @@ export const api = {
       body: JSON.stringify({ items }),
     }),
 
-  // 记忆（Pro 那几个）
+  // 记忆
   memoryProfile: () =>
     req<{
       kinds: { kind: string; n: number }[]
@@ -349,7 +349,7 @@ export const api = {
     }),
   summarizeMemory: () => req<{ ok: boolean; text: string }>('/memory/summarize', { method: 'POST' }),
 
-  // 用量明细（Pro）
+  // 用量明细
   usageDetail: (days = 30) =>
     req<{
       days: number
@@ -358,7 +358,7 @@ export const api = {
       alert: { days: number; used: number; limit: number; over: boolean }
     }>(`/stats/usage/detail?days=${days}`),
 
-  // 数据迁移（Pro）
+  // 数据迁移
   migrateInfo: () => req<MigrateInfo>('/migrate/info'),
   importPack: (file: File) => {
     const fd = new FormData()

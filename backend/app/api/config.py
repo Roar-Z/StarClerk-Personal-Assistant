@@ -74,7 +74,7 @@ def get_config():
         "providers": client.PROVIDERS,
         "plan": meta.plan_info(),
         "license": license.info(),
-        "limits": {"free": access.LIMITS["free"], "pro": access.LIMITS["pro"]},
+        "limits": {"free": access.LIMITS["free"]},
         "scheduler": {**runner.status(), "enabled": settings.scheduler_enabled},
     }
 

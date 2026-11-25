@@ -2,12 +2,12 @@
 
     chat     /api/chat       对话 + 会话 + 导出
     task     /api/tasks      托管任务 + 额度 + 执行 + 巡检日志
-    memory   /api/memory     长期记忆（分组/备份是 Pro）
+    memory   /api/memory     长期记忆（分组/备份/画像）
     rag      /api/rag        知识库导入/检索/工作区
-    mindmap  /api/mindmap    思维导图（Pro）
-    notes    /api/notes      笔记知识库（Pro）
-    skills   /api/skills     技能模板（免费只读，Pro 能改）
-    migrate  /api/migrate    数据迁移向导（Pro）
+    mindmap  /api/mindmap    思维导图
+    notes    /api/notes      笔记知识库
+    skills   /api/skills     技能模板
+    migrate  /api/migrate    数据迁移向导
     license  /api/license    本地授权 + 低配模式
     stats    /api/stats      用量与异常
     config   /api/config     模型/向量配置

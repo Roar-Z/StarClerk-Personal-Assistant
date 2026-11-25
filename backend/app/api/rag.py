@@ -1,6 +1,6 @@
 """rag 分组：本地知识库导入/检索/删除（SQLite 只做元数据，正文在 LanceDB）。
 
-免费版：单文档上传、文档数上限 5；Pro：多工作区、批量导入导出、票据抽取。
+免费版：单文档上传（最多 500 份）、多工作区、批量导入导出、票据抽取都开放。
 越权由 access 中间件按路径拦，这里只管额度和业务。
 """
 from __future__ import annotations
@@ -106,13 +106,13 @@ async def remove(doc_id: str):
     return {"ok": True}
 
 
-# ---------------- Pro：多工作区 ----------------
-@router.get("/workspaces", summary="工作区列表（Pro）")
+# ----------------多工作区 ----------------
+@router.get("/workspaces", summary="工作区列表")
 def workspaces():
     return {"items": vs.list_workspaces(), "default": vs.DEFAULT_WS}
 
 
-@router.patch("/documents/{doc_id}/workspace", summary="移动文档到工作区（Pro）")
+@router.patch("/documents/{doc_id}/workspace", summary="移动文档到工作区")
 async def move(doc_id: str, body: MoveIn):
     access.require("workspace")  # 路径挂在 documents 下，中间件认不出，这里补一刀
     name = body.workspace.strip() or vs.DEFAULT_WS
@@ -122,7 +122,7 @@ async def move(doc_id: str, body: MoveIn):
     return {"ok": True, "workspace": name, "chunks": n}
 
 
-@router.delete("/workspaces/{name}", summary="删工作区（文档退回 default，Pro）")
+@router.delete("/workspaces/{name}", summary="删工作区（文档退回 default）")
 def drop_workspace(name: str):
     if name == vs.DEFAULT_WS:
         raise HTTPException(400, "默认工作区不能删")
@@ -132,8 +132,8 @@ def drop_workspace(name: str):
     return {"ok": True, "moved": moved}
 
 
-# ---------------- Pro：批量导入导出 ----------------
-@router.post("/batch", summary="批量导入（Pro）")
+# ----------------批量导入导出 ----------------
+@router.post("/batch", summary="批量导入")
 async def batch_upload(files: list[UploadFile] = File(...), workspace: str = ""):
     ok, failed = [], []
     for f in files:
@@ -149,7 +149,7 @@ async def batch_upload(files: list[UploadFile] = File(...), workspace: str = "")
     return {"ok": ok, "failed": failed, "workspace": workspace or vs.DEFAULT_WS}
 
 
-@router.get("/batch/export", summary="导出文档清单 CSV（Pro）")
+@router.get("/batch/export", summary="导出文档清单 CSV")
 def batch_export():
     rows = vs.list_documents()
     buf = io.StringIO()
@@ -165,14 +165,14 @@ def batch_export():
     )
 
 
-# ---------------- Pro：票据轻结构化抽取 ----------------
+# ----------------票据轻结构化抽取 ----------------
 _EXTRACT_PROMPT = """从下面这段票据/发票文字里抽字段，只回 JSON，不要解释：
 {"invoice_no":"", "date":"", "amount":"", "tax":"", "seller":"", "buyer":"", "items":[]}
 抽不到的字段填空字符串。文字：
 {text}"""
 
 
-@router.post("/extract", summary="票据字段抽取（Pro）")
+@router.post("/extract", summary="票据字段抽取")
 def extract(body: ExtractIn):
     text = vs.document_text(body.doc_id, 6000)
     if len(text) < 10:
@@ -190,7 +190,7 @@ def extract(body: ExtractIn):
     return {"doc_id": body.doc_id, "fields": data, "model": res.model}
 
 
-# ---------------- Pro：批量摘要 / 翻译 / 抽表格 ----------------
+# ----------------批量摘要 / 翻译 / 抽表格 ----------------
 _BATCH_PROMPT = {
     "summary": "把下面这份文档压成 5 条以内的要点，一行一条，别写开场白和总结句。\n\n{text}",
     "translate": "把下面内容翻译成{lang}，术语和数字保持原样，只输出译文。\n\n{text}",
@@ -205,7 +205,7 @@ class BatchAiIn(BaseModel):
     lang: str = "中文"
 
 
-@router.post("/batch-ai", summary="批量摘要 / 翻译 / 抽表格（Pro）")
+@router.post("/batch-ai", summary="批量摘要 / 翻译 / 抽表格")
 def batch_ai(body: BatchAiIn):
     """一次最多 10 份，串着跑。并发开满容易撞上游限流，慢一点反而稳。"""
     sources = {d.get("doc_id"): d.get("source", "") for d in vs.list_documents()}

@@ -118,7 +118,7 @@ async function uninstallApp() {
         <section class="card">
           <div class="card-head">
             <span class="card-title">版本信息</span>
-            <span class="pill" :class="`tier-${info?.tier || 'guest'}`">{{ info?.tier_label || '游客' }}</span>
+            <span class="pill" :class="`tier-${info?.tier || 'guest'}`">{{ info?.tier_label || '未登录' }}</span>
           </div>
           <div class="card-body">
             <div class="sys-name">

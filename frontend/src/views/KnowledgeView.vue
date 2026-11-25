@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import AppIcon from '../components/AppIcon.vue'
 import { api, download, type DocMeta, type MindMap, type WorkSpace } from '../api'
-import { isPro, me } from '../store'
+import { isFree, me } from '../store'
 
 const stats = ref({ chunks: 0, memories: 0, dim: 0 })
 const docs = ref<DocMeta[]>([])
@@ -12,7 +12,7 @@ const source = ref('')
 const busy = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
-// 工作区是 Pro 才有的入口，免费版一直用 default
+// 没建工作区时一直用 default
 const workspaces = ref<WorkSpace[]>([])
 const ws = ref('')
 
@@ -84,7 +84,7 @@ async function refresh() {
     stats.value = s
     docs.value = d
     picked.value = picked.value.filter((id) => d.some((x) => x.doc_id === id))
-    if (isPro.value) workspaces.value = (await api.workspaces()).items
+    if (isFree.value) workspaces.value = (await api.workspaces()).items
   } catch {
     /* 提示在 api 层 */
   }
@@ -167,7 +167,7 @@ onMounted(refresh)
         <span class="page-sub">本机 · {{ docs.length }}/{{ me?.limits.docs ?? 0 }} 份</span>
       </div>
       <el-select
-        v-if="isPro && workspaces.length > 1"
+        v-if="isFree && workspaces.length > 1"
         v-model="ws"
         size="small"
         style="width: 104px"
@@ -176,10 +176,10 @@ onMounted(refresh)
         <el-option v-for="w in workspaces" :key="w.name" :label="`${w.name} ${w.docs}`" :value="w.name" />
       </el-select>
       <input ref="fileInput" type="file" multiple accept=".txt,.md,.csv,.log,.json" hidden @change="uploadFiles" />
-      <button v-if="isPro" class="btn-ghost" :disabled="!picked.length" @click="openBatch">
+      <button v-if="isFree" class="btn-ghost" :disabled="!picked.length" @click="openBatch">
         批量{{ picked.length ? `(${picked.length})` : '' }}
       </button>
-      <button v-if="isPro" class="btn-ghost" :disabled="!docs.length" @click="openMindmap()">导图</button>
+      <button v-if="isFree" class="btn-ghost" :disabled="!docs.length" @click="openMindmap()">导图</button>
       <button class="btn-dark" :disabled="busy" @click="fileInput?.click()">
         <AppIcon name="upload" :size="14" />
         导入
@@ -222,7 +222,7 @@ onMounted(refresh)
           <div class="card-body doc-list">
             <div v-for="d in docs" :key="d.doc_id" class="doc-row">
               <el-checkbox
-                v-if="isPro"
+                v-if="isFree"
                 :model-value="picked.includes(d.doc_id)"
                 class="doc-pick"
                 @change="togglePick(d.doc_id)"
@@ -231,7 +231,7 @@ onMounted(refresh)
                 <span class="doc-name" :title="d.source">{{ d.source }}</span>
                 <span class="doc-meta">{{ d.chunks }} 段 · {{ d.workspace }}</span>
               </div>
-              <button v-if="isPro" class="mem-del" title="生成导图" @click="openMindmap(d.doc_id)">
+              <button v-if="isFree" class="mem-del" title="生成导图" @click="openMindmap(d.doc_id)">
                 <AppIcon name="mindmap" :size="13" />
               </button>
               <button class="mem-del" title="删除" @click="remove(d)">

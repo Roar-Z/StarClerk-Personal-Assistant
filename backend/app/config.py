@@ -67,11 +67,7 @@ class Settings(BaseSettings):
     patrol_allow_web: bool = False  # 后台巡检默认不联网，避免定时任务频繁出网
 
     # ---- 托管任务 ----
-    # 档位和额度已经挪到 license + access 里（本地授权文件说了算），
-    # 下面两个旧字段留着只是怕老 .env 里写着，读到也不报错
-    plan: str = "free"
-    free_task_limit: int = 5
-    pro_task_limit: int = 20
+    # 档位和额度在 license + access 里，老 .env 里写的 PLAN / TASK_LIMIT 不再生效
     scheduler_enabled: bool = True
     scheduler_interval: int = 20  # 子线程轮询间隔（秒，低配模式会乘 2）
 
