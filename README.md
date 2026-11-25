@@ -35,8 +35,9 @@ StarClerk/
 │     ├─ notify/notifier.py     # 托盘气泡 + SSE 推送
 │     ├─ desktop/               # tray.py / hotkey.py / window.py
 │     └─ api/                   # chat / task / memory / rag / stats / config
-├─ frontend/                    # Vue3 + Vite + ElementPlus（1120×760 桌面客户端：左侧会话侧栏 + 居中对话区）
-│  └─ src/{App.vue,api.ts,views/{Chat,Knowledge,Tasks,Settings}View.vue}
+├─ frontend/                    # Vue3 + Vite + ElementPlus（440×700 悬浮面板：自绘标题栏 + 底部六页导航）
+│  ├─ src/{App.vue,api.ts,store.ts,desktop.ts}
+│  └─ src/{components/{TitleBar,AppIcon}.vue, views/{Chat,Tasks,Memory,Knowledge,Settings,Usage}View.vue}
 ├─ build/starclerk.spec         # PyInstaller 单文件 EXE
 ├─ data/                        # 运行时生成：starcLerk.db / lancedb / uploads
 └─ .env.example
@@ -53,7 +54,7 @@ StarClerk/
 | `db/sqlite.py` | 只存元数据，WAL 支持多线程并发；`usage`/`errors` 也在这里 |
 | `tasks/scheduler.py` | 独立子线程轮询（默认 20s），串行执行，无 Celery/无独立进程 |
 | `notify/notifier.py` | 提醒单一出口（托盘气泡 + SSE 弹层），调用方无感知 |
-| `desktop/*` | pystray 托盘、pynput 全局热键、pywebview 置顶悬浮窗 |
+| `desktop/*` | pystray 托盘、pynput 全局热键、pywebview 无边框面板（拖标题栏移动、最小化、关闭只隐藏） |
 | `api/*` | 六个分组：chat / task / memory / rag / stats / config，业务在 agent/rag/tasks |
 
 ## 启动流程
@@ -82,7 +83,26 @@ python backend/run.py       # 或 uvicorn app.main:app --app-dir backend --reloa
 
 # 前端
 cd frontend && npm i && npm run dev     # http://127.0.0.1:5173 ，/api 已代理
+npm run build                           # 产物交给 FastAPI 托管，直接开 http://127.0.0.1:8756
 ```
+
+## 悬浮面板（Step4）
+
+440×700 无边框小窗，右上角两个按钮：最小化到任务栏、关闭收进托盘（进程不退）。
+按住标题栏可拖动 —— 前端把鼠标屏幕坐标发过去，`desktop/window.py` 里的 Bridge 算出窗口新位置再 `move`，不用一路累加偏移。
+
+底部六页，切页记在 hash 里，刷新或从托盘唤起不会跳回第一页：
+
+| 页面 | 主要交互 |
+|---|---|
+| 对话 | 会话下拉切换/新建/删除，本地资料开关，回答下挂引用来源 |
+| 巡检任务 | 新建、启停、立即执行、删除；右上角显示已用/上限，超额后端 409 |
+| 记忆 | 手动加一条、逐条删除；对话里说“记住…”也会自动写入 |
+| 资料库 | 选文件上传（txt/md/csv/log/json）、粘贴文本、按文档删除 |
+| 模型 | 厂商预设、Key、embedding、断网降级、重建索引，保存写回 `.env` |
+| 用量 | 7/30 天 token（按场景/模型/每天）、免费 ↔ Pro 切换 |
+
+请求只走 `src/api.ts` 的 `req()`：非 2xx 取后端 `detail` 弹一次提示（600ms 内不重复），超时 180s 单独提示，页面里只管 loading 和列表状态。
 
 ## 打包 EXE
 
