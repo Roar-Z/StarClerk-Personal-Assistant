@@ -1,16 +1,35 @@
 import { computed, ref } from 'vue'
-import { api, type Session } from './api'
+import { api, type LicenseInfo, type Session } from './api'
 
 export const sessions = ref<Session[]>([])
 export const activeId = ref('')
 
+// 当前档位放这里，各页面直接读，省得每页都去请求一次
+export const me = ref<LicenseInfo | null>(null)
+
 export const activeSession = computed(() => sessions.value.find((s) => s.id === activeId.value))
+export const isGuest = computed(() => me.value?.tier === 'guest')
+export const isPro = computed(() => me.value?.tier === 'pro')
+
+export async function loadLicense() {
+  try {
+    me.value = await api.license()
+  } catch {
+    me.value = null // 后端没起来也不影响看界面
+  }
+  return me.value
+}
 
 export async function loadSessions() {
+  if (isGuest.value) {
+    // 游客会话只在内存里，列表由对话页自己维护
+    sessions.value = []
+    return
+  }
   try {
     sessions.value = await api.sessions()
   } catch {
-    sessions.value = []  // 后端刚起或断线时先留空，避免整个面板挂掉
+    sessions.value = [] // 后端刚起或断线时先留空，避免整个面板挂掉
   }
   if (!activeId.value && sessions.value.length) activeId.value = sessions.value[0].id
   if (activeId.value && !sessions.value.some((s) => s.id === activeId.value)) activeId.value = ''

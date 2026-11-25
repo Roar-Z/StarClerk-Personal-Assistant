@@ -361,6 +361,33 @@ body {
   cursor: default;
 }
 
+/* 档位标签：游客灰、免费蓝、Pro 近黑底白字，克制一点别抢眼 */
+.tag.tier-guest {
+  color: var(--sc-muted);
+}
+.tag.tier-free {
+  color: var(--sc-accent);
+  border-color: rgba(58, 86, 212, 0.28);
+  background: rgba(58, 86, 212, 0.06);
+}
+.tag.tier-pro {
+  color: #fff;
+  background: var(--sc-text);
+  border-color: var(--sc-text);
+}
+
+/* 底部导航上的小锁点 */
+.tab-lock {
+  position: absolute;
+  top: 8px;
+  right: calc(50% - 18px);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sc-muted);
+  opacity: 0.55;
+}
+
 /* Element Plus 微调 */
 .el-button {
   font-weight: 500;

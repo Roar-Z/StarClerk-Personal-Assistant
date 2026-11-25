@@ -22,6 +22,7 @@ const ICONS: Record<string, string> = {
   minimize: 'M6 12h12',
   close: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
   refresh: 'M19 12a7 7 0 1 1-2.2-5.1M19.5 4.5V8H16',
+  mindmap: 'M12 4.5v3M12 7.5 5.5 11v2M12 7.5l6.5 3.5v2M5.5 13v4M18.5 13v4M12 7.5v9M3.5 17h4v3h-4zM16.5 17h4v3h-4zM10 16.5h4v3h-4z',
 }
 </script>
 

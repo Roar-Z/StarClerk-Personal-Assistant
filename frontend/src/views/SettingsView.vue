@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
+import { loadLicense, loadSessions, me } from '../store'
 
 const cfg = reactive<any>({
   llm_provider: 'deepseek',
@@ -19,6 +20,49 @@ const saving = ref(false)
 const testing = ref(false)
 const rebuilding = ref(false)
 const status = ref<{ ok: boolean; text: string } | null>(null)
+const code = ref('')
+const activating = ref(false)
+const perfBusy = ref(false)
+
+async function doActivate() {
+  const text = code.value.trim()
+  if (!text) return ElMessage.warning('先粘贴激活码')
+  activating.value = true
+  try {
+    await api.activate(text)
+    await loadLicense()
+    await loadSessions()
+    code.value = ''
+    ElMessage.success(`已激活 ${me.value?.label || ''}`)
+  } catch {
+    /* 码不对的提示在 api 层 */
+  } finally {
+    activating.value = false
+  }
+}
+
+async function togglePerf(on: boolean) {
+  perfBusy.value = true
+  try {
+    me.value = await api.setPerf(on)
+    ElMessage.success(on ? '低配模式已开，巡检间隔会拉长' : '已恢复常规模式')
+  } catch {
+    if (me.value) me.value.perf_mode = !on
+  } finally {
+    perfBusy.value = false
+  }
+}
+
+async function backToGuest() {
+  try {
+    await api.resetLicense()
+    await loadLicense()
+    await loadSessions()
+    ElMessage.success('已退回游客模式')
+  } catch {
+    /* 同上 */
+  }
+}
 
 function applyPreset(name: string) {
   const p = providers.value[name]
@@ -101,6 +145,46 @@ onMounted(load)
 
     <div class="page-body sc-scroll">
       <div class="page-inner stack">
+        <section class="card">
+          <div class="card-head">
+            <span class="card-title">本地授权</span>
+            <span class="card-hint">离线校验</span>
+          </div>
+          <div class="card-body">
+            <div class="lic-head">
+              <div>
+                <p class="lic-name">{{ me?.label || '游客' }}</p>
+                <span class="lic-sub">
+                  任务 {{ me?.limits.tasks ?? 0 }} · 文档 {{ me?.limits.docs ?? 0 }} · 记忆
+                  {{ me?.limits.memories ?? 0 }}
+                </span>
+              </div>
+              <el-button v-if="me && !me.is_guest" link size="small" @click="backToGuest">退回游客</el-button>
+            </div>
+            <div v-if="!me?.is_pro" class="lic-input">
+              <el-input
+                v-model="code"
+                size="small"
+                placeholder="粘贴激活码，如 FREE-2024AB-1A2B"
+                @keyup.enter="doActivate"
+              />
+              <el-button size="small" type="primary" :loading="activating" @click="doActivate">激活</el-button>
+            </div>
+            <div class="lic-row">
+              <div>
+                <p>低配性能模式</p>
+                <span>巡检间隔拉长，模型并发固定 {{ me?.max_concurrency ?? 2 }} 路</span>
+              </div>
+              <el-switch
+                :model-value="!!me?.perf_mode"
+                :loading="perfBusy"
+                size="small"
+                @change="(v) => togglePerf(Boolean(v))"
+              />
+            </div>
+          </div>
+        </section>
+
         <section class="card">
           <div class="card-head">
             <span class="card-title">对话模型</span>

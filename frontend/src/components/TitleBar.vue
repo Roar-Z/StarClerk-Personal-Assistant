@@ -2,6 +2,7 @@
 import { onUnmounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { isDesktop, win } from '../desktop'
+import { me } from '../store'
 
 const desktop = isDesktop()
 const dragging = ref(false)
@@ -36,7 +37,7 @@ onUnmounted(onUp)
   <header class="titlebar" :class="{ dragging }" @mousedown="onDown">
     <span class="dot" />
     <span class="name">StarClerk</span>
-    <span class="tag">本地版</span>
+    <span class="tag" :class="`tier-${me?.tier || 'guest'}`">{{ me?.label || '本地版' }}</span>
 
     <div v-if="desktop" class="win-ops" @mousedown.stop>
       <button class="win-btn" title="最小化" @click="win.minimize()"><AppIcon name="minimize" :size="14" /></button>

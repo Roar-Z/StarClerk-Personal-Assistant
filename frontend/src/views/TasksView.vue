@@ -2,7 +2,8 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import AppIcon from '../components/AppIcon.vue'
-import { api, type Quota, type Task } from '../api'
+import { api, download, type Quota, type Task, type TaskLog } from '../api'
+import { isPro } from '../store'
 
 const tasks = ref<Task[]>([])
 const quota = ref<Quota>()
@@ -10,6 +11,18 @@ const running = ref<string>()
 const dialog = ref(false)
 const result = ref<{ title: string; body: string } | null>(null)
 const form = reactive({ name: '', prompt: '', cron_minutes: 60 })
+
+// 巡检历史：默认拉最近 20 条，导出是 Pro
+const logs = ref<TaskLog[]>([])
+const logOpen = ref(false)
+
+async function loadLogs() {
+  try {
+    logs.value = (await api.taskLogs('', 20)).items
+  } catch {
+    /* 提示在 api 层 */
+  }
+}
 
 const INTERVALS = [
   { value: 30, label: '每 30 分钟' },
@@ -54,6 +67,11 @@ async function add() {
   }
 }
 
+async function openLogs() {
+  logOpen.value = true
+  await loadLogs()
+}
+
 async function run(t: Task) {
   running.value = t.id
   try {
@@ -96,6 +114,7 @@ onMounted(refresh)
         <span class="page-sub">{{ quota ? `${quota.used} / ${quota.limit}` : '' }}</span>
       </div>
       <div class="head-ops">
+        <button class="btn-ghost" @click="openLogs">日志</button>
         <button class="btn-dark" @click="dialog = true">
           <AppIcon name="plus" :size="14" />
           新建
@@ -127,11 +146,26 @@ onMounted(refresh)
         </div>
 
         <p class="muted-line">
-          调度器每 20 秒扫一次，到点自己在后台跑；有异常才会弹提醒，结果也写进任务卡片。
-          <template v-if="!quota?.is_pro">免费版最多 5 个，可以到「用量」页切 Pro。</template>
+          到点的任务先进队列，隔几秒跑一个，不会同时打模型；有异常才弹提醒。
+          <template v-if="!quota?.is_pro">免费版最多 5 个，Pro 可以到 20 个。</template>
         </p>
       </div>
     </div>
+
+    <el-dialog v-model="logOpen" title="巡检日志" width="460px" align-center>
+      <div class="log-list">
+        <div v-for="l in logs" :key="l.id" class="log-row">
+          <span class="log-time">{{ fmt(l.created_at) }}</span>
+          <span class="log-name">{{ l.name }}</span>
+          <span class="log-ok" :class="{ bad: !l.ok }">{{ l.ok ? '成功' : '失败' }}</span>
+        </div>
+        <p v-if="!logs.length" class="empty">还没有执行记录</p>
+      </div>
+      <template #footer>
+        <el-button v-if="isPro" size="small" @click="download('/tasks/logs/export')">导出 CSV</el-button>
+        <el-button size="small" type="primary" @click="logOpen = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="dialog" title="新建巡检任务" width="440px" align-center>
       <label class="field-label">任务名称</label>

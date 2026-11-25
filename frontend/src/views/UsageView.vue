@@ -5,7 +5,6 @@ import { api, type UsageSummary } from '../api'
 const days = ref(7)
 const summary = ref<UsageSummary>()
 const overview = ref<any>()
-const switching = ref(false)
 
 const totals = computed(() => summary.value?.totals)
 const scopeName: Record<string, string> = { chat: '对话', patrol: '后台巡检', memory: '记忆抽取', probe: '连接测试' }
@@ -20,17 +19,8 @@ async function load() {
   }
 }
 
-async function switchPlan() {
-  const next = overview.value?.plan?.plan === 'pro' ? 'free' : 'pro'
-  switching.value = true
-  try {
-    await api.setPlan(next)
-    await load()
-  } catch {
-    /* ignore */
-  } finally {
-    switching.value = false
-  }
+function goLicense() {
+  location.hash = 'model'
 }
 
 function fmt(n = 0) {
@@ -127,23 +117,22 @@ onMounted(load)
 
         <div class="card">
           <div class="card-head">
-            <span class="card-title">套餐</span>
-            <span class="card-hint">{{ overview?.plan?.is_pro ? 'Pro' : '免费版' }}</span>
+            <span class="card-title">档位</span>
+            <span class="card-hint">{{ overview?.license?.label || '游客' }}</span>
           </div>
           <div class="card-body">
             <div class="plan-row">
               <div>
-                <p class="plan-name">{{ overview?.plan?.is_pro ? 'Pro 版' : '免费版' }}</p>
+                <p class="plan-name">{{ overview?.license?.label || '游客' }}</p>
                 <p class="muted-line">
-                  托管任务 {{ overview?.plan?.used || 0 }} / {{ overview?.plan?.limit || 5 }}
+                  任务 {{ overview?.plan?.used || 0 }} / {{ overview?.plan?.limit || 0 }} · 模型并发
+                  {{ overview?.llm_gate?.limit || 2 }} 路（占用 {{ overview?.llm_gate?.busy || 0 }}）
                 </p>
               </div>
-              <button class="btn-dark" :disabled="switching" @click="switchPlan">
-                {{ overview?.plan?.is_pro ? '切回免费版' : '升级 Pro' }}
-              </button>
+              <button v-if="!overview?.license?.is_pro" class="btn-dark" @click="goLicense">去激活</button>
             </div>
             <p class="muted-line" style="margin: 10px 0 0">
-              本地版套餐只是任务数量限制，不涉及支付。异常 {{ overview?.errors_24h || 0 }} 条（24h）。
+              档位只存在本机，不联网校验；异常 {{ overview?.errors_24h || 0 }} 条（24h）。
             </p>
           </div>
         </div>
