@@ -1,22 +1,64 @@
-"""悬浮窗：pywebview（Win10/11 自带 WebView2，不额外装浏览器）。
+"""悬浮面板：pywebview 无边框小窗，拖动/最小化/关闭都由页面右上角的按钮触发。
 
-关闭窗口 = 隐藏到托盘，不退出进程；快捷键/托盘再唤起。
-无 pywebview 时退化为默认浏览器打开。
+关闭只隐藏，进程留给托盘；WebView2 缺失时退化为默认浏览器打开。
 """
 from __future__ import annotations
 
+import ctypes
 import logging
 import webbrowser
 
 log = logging.getLogger("window")
 
 _window = None
+_origin = (0, 0)  # 拖动开始时的窗口左上角坐标
 
 
 def _url() -> str:
     from ..config import settings
 
     return f"http://{settings.app_host}:{settings.app_port}/"
+
+
+class Bridge:
+    """挂给 js_api 的最小方法集，前端用 window.pywebview.api.xxx 调。"""
+
+    def drag_begin(self) -> bool:
+        global _origin
+        if _window is None:
+            return False
+        _origin = (_window.x, _window.y)
+        return True
+
+    def drag_to(self, mouse_x: int, mouse_y: int, base_x: int, base_y: int) -> bool:
+        """前端传屏幕坐标：按下时的基准点 + 当前点，偏移由窗口原点加上，避免累积误差。"""
+        if _window is None:
+            return False
+        _window.move(int(_origin[0] + mouse_x - base_x), int(_origin[1] + mouse_y - base_y))
+        return True
+
+    def minimize(self) -> bool:
+        if _window is None:
+            return False
+        _window.minimize()
+        return True
+
+    def hide(self) -> bool:
+        """关闭按钮：收到托盘里，不退出进程。"""
+        if _window is None:
+            return False
+        _window.hide()
+        return True
+
+
+def _corner(width: int, height: int) -> tuple[int, int]:
+    """默认贴右下角，离任务栏留一点距离，像常规悬浮面板。"""
+    try:
+        user32 = ctypes.windll.user32
+        sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+        return max(0, sw - width - 28), max(0, sh - height - 72)
+    except Exception:  # noqa: BLE001  非 Windows 或取屏失败就退回固定位置
+        return 80, 60
 
 
 def open_panel() -> None:
@@ -26,41 +68,45 @@ def open_panel() -> None:
             _window.restore()
             _window.evaluate_js("window.__starclerkFocus && window.__starclerkFocus()")
             return
-        except Exception:  # noqa: BLE001  窗口已销毁则重建
+        except Exception:  # noqa: BLE001  窗口销毁了就重新开
             pass
     webbrowser.open(_url())
 
 
 def run_window() -> None:
-    """主线程阻塞运行（pywebview 要求）。托盘/快捷键线程可调 open_panel()。"""
+    """pywebview 要求跑在主线程，launcher 里直接调。"""
     global _window
     try:
         import webview
     except Exception:  # noqa: BLE001
         log.warning("pywebview 不可用，改为浏览器模式")
-        open_panel()
+        webbrowser.open(_url())
         return
 
+    from ..config import settings
+
+    w, h = settings.window_width, settings.window_height
+    x, y = _corner(w, h)
     _window = webview.create_window(
         "StarClerk",
         _url(),
-        width=1120,
-        height=760,
-        min_size=(920, 620),
-        x=80,
-        y=60,
-        resizable=True,
+        width=w,
+        height=h,
+        min_size=(380, 560),
+        x=x,
+        y=y,
+        frameless=True,       # 自绘标题栏，页面才能做出干净的窄面板
         easy_drag=False,
-        on_top=False,         # 桌面应用形态：不置顶，快捷键唤起时置前
-        frameless=False,
+        on_top=False,
         background_color="#F7F8FA",
+        js_api=Bridge(),
     )
     _window.events.closing += _on_closing
     webview.start(debug=False)
 
 
 def _on_closing() -> bool:
-    """拦截关闭：隐藏到托盘，返回 False 阻止真正关闭。"""
+    """点系统关闭（Alt+F4 等）也走隐藏，返回 False 阻止真关闭。"""
     try:
         _window.hide()
     except Exception:  # noqa: BLE001
