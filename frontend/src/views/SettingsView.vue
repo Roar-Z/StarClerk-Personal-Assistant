@@ -9,6 +9,7 @@ const cfg = reactive<any>({
   llm_base_url: '',
   llm_api_key: '',
   llm_model: '',
+  llm_gateway: 'own',
   embed_base_url: '',
   embed_model: '',
   embed_dim: 1024,
@@ -82,6 +83,7 @@ async function load() {
       llm_provider: s.llm_provider,
       llm_base_url: s.llm_base_url,
       llm_model: s.llm_model,
+      llm_gateway: s.llm_gateway || 'own',
       embed_base_url: s.embed_base_url,
       embed_model: s.embed_model,
       embed_dim: s.embed_dim,
@@ -212,22 +214,48 @@ onMounted(load)
 
           <div v-else class="card-body">
             <div class="form-row">
+              <label>走哪条</label>
+              <div class="seg">
+                <button class="seg-btn" :class="{ on: cfg.llm_gateway !== 'kilo' }" @click="cfg.llm_gateway = 'own'">
+                  自己的 Key
+                </button>
+                <button class="seg-btn" :class="{ on: cfg.llm_gateway === 'kilo' }" @click="cfg.llm_gateway = 'kilo'">
+                  Kilo 免费网关
+                </button>
+              </div>
+            </div>
+            <p v-if="cfg.llm_gateway === 'kilo'" class="muted-line">
+              走 {{ guestModel?.model || 'kilo-auto/free' }}，不花自己的额度，按小时限流，赶时间就切回来。
+            </p>
+            <div class="form-row">
               <label>服务商</label>
-              <el-select v-model="cfg.llm_provider" size="small" @change="applyPreset">
+              <el-select v-model="cfg.llm_provider" size="small" :disabled="cfg.llm_gateway === 'kilo'" @change="applyPreset">
                 <el-option v-for="(_, k) in providers" :key="k" :label="k" :value="k" />
               </el-select>
             </div>
             <div class="form-row">
               <label>接口地址</label>
-              <el-input v-model="cfg.llm_base_url" size="small" placeholder="https://api.xxx.com/v1" />
+              <el-input
+                v-model="cfg.llm_base_url"
+                size="small"
+                :disabled="cfg.llm_gateway === 'kilo'"
+                placeholder="https://api.xxx.com/v1"
+              />
             </div>
             <div class="form-row">
               <label>API Key</label>
-              <el-input v-model="cfg.llm_api_key" size="small" type="password" show-password placeholder="留空表示不改" />
+              <el-input
+                v-model="cfg.llm_api_key"
+                size="small"
+                type="password"
+                show-password
+                :disabled="cfg.llm_gateway === 'kilo'"
+                placeholder="留空表示不改"
+              />
             </div>
             <div class="form-row">
               <label>模型名</label>
-              <el-input v-model="cfg.llm_model" size="small" />
+              <el-input v-model="cfg.llm_model" size="small" :disabled="cfg.llm_gateway === 'kilo'" />
             </div>
             <div class="form-foot">
               <el-button link size="small" :loading="testing" @click="test">测试连接</el-button>

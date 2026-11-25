@@ -30,6 +30,7 @@ class TaskIn(BaseModel):
     cron_minutes: int = Field(default=60, ge=1, le=10080)
     doc_scope: str = ""
     workspace: str = ""
+    url: str = ""
     kind: str = "patrol"
 
 
@@ -99,8 +100,11 @@ def create(body: TaskIn):
     if not name or len(prompt) < 4:
         raise HTTPException(400, "任务名和巡检要求都不能为空")
     access.check_limit("tasks", len(meta.list_tasks()))
+    url = body.url.strip()
+    if url and not url.startswith(("http://", "https://")):
+        raise HTTPException(400, "网址要以 http:// 或 https:// 开头")
     return meta.create_task(
-        name, prompt, body.kind, body.cron_minutes, body.doc_scope, body.workspace
+        name, prompt, body.kind, body.cron_minutes, body.doc_scope, body.workspace, url
     )
 
 

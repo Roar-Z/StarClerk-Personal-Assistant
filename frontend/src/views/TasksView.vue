@@ -10,7 +10,8 @@ const quota = ref<Quota>()
 const running = ref<string>()
 const dialog = ref(false)
 const result = ref<{ title: string; body: string } | null>(null)
-const form = reactive({ name: '', prompt: '', cron_minutes: 60 })
+// url 可选：填了就每次先抓一遍网页，正文没变就不打模型
+const form = reactive({ name: '', prompt: '', url: '', cron_minutes: 60 })
 
 // 巡检历史：默认拉最近 20 条，导出是 Pro
 const logs = ref<TaskLog[]>([])
@@ -56,10 +57,12 @@ function intervalText(m: number) {
 
 async function add() {
   if (!form.name.trim() || !form.prompt.trim()) return ElMessage.warning('名称和巡检要求都要填')
+  const url = form.url.trim()
+  if (url && !/^https?:\/\//i.test(url)) return ElMessage.warning('网址要以 http:// 或 https:// 开头')
   try {
-    await api.addTask({ ...form })
+    await api.addTask({ ...form, url })
     dialog.value = false
-    form.name = form.prompt = ''
+    form.name = form.prompt = form.url = ''
     form.cron_minutes = 60
     await refresh()
   } catch {
@@ -134,8 +137,10 @@ onMounted(refresh)
             <el-switch :model-value="!!t.enabled" size="small" @change="(v) => toggle(t, !!v)" />
             <span class="task-name">{{ t.name }}</span>
             <span class="chip">{{ intervalText(t.cron_minutes) }}</span>
+            <span v-if="t.url" class="chip url" :title="t.url">盯网页</span>
           </div>
           <p class="task-prompt">{{ t.prompt }}</p>
+          <p v-if="t.url" class="task-url" :title="t.url">{{ t.url }}</p>
           <div class="task-foot">
             <span class="task-time">上次 {{ fmt(t.last_run_at) }}</span>
             <div class="task-ops">
@@ -179,6 +184,14 @@ onMounted(refresh)
         placeholder="如：检查今天新增的资料里有没有风险点，没有就只回复“无异常”"
         class="mb12"
       />
+      <label class="field-label">盯的网页（可不填）</label>
+      <el-input
+        v-model="form.url"
+        size="small"
+        placeholder="https://example.com/notice"
+        class="mb12"
+      />
+      <p class="form-tip">填了会先抓网页正文，和上次一样就跳过，不花 token。</p>
       <label class="field-label">执行间隔</label>
       <el-select v-model="form.cron_minutes" size="small" style="width: 100%">
         <el-option v-for="i in INTERVALS" :key="i.value" :value="i.value" :label="i.label" />

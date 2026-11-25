@@ -114,3 +114,68 @@ async def restore(items: list[dict[str, Any]]):
         except Exception:  # noqa: BLE001  向量失败不影响原文
             pass
     return {"ok": True, "added": added, "skipped": len(items) - added}
+
+
+# ---------------- Pro：画像 / 自动归类 / 定期总结 ----------------
+@router.get("/profile", summary="画像与分组概览（Pro）")
+def profile():
+    return meta.memory_profile()
+
+
+@router.post("/organize", summary="给没归组的记忆自动起组（Pro）")
+async def organize():
+    """按 kind 先分堆，再让模型给每堆起个短名字。逐条让模型归类太烧 token，也不准。"""
+    from ..llm import client
+
+    loose = [r for r in meta.list_memories(300) if not (r.get("group_name") or "").strip()]
+    if not loose:
+        return {"ok": True, "moved": 0, "groups": []}
+
+    buckets: dict[str, list[dict[str, Any]]] = {}
+    for r in loose:
+        buckets.setdefault(r.get("kind") or "fact", []).append(r)
+
+    moved, groups = 0, []
+    for kind, rows in buckets.items():
+        sample = "\n".join(f"- {r['content'][:60]}" for r in rows[:12])
+        try:
+            res = await asyncio.to_thread(
+                client.complete,
+                [{"role": "user", "content": f"下面是用户的{kind}类记忆，起一个 2-4 个字的中文分组名，"
+                                            f"只回名字，不要标点。\n{sample}"}],
+                temperature=0.2,
+                scope="memory",
+            )
+            name = res.content.strip().strip("「」“”\"'。 ") or kind
+        except Exception:  # noqa: BLE001  模型不给力就退回固定名字
+            name = {"fact": "事实", "preference": "偏好", "todo": "待办", "summary": "总结"}.get(kind, "其他")
+        name = name[:8]
+        for r in rows:
+            meta.set_memory_group(r["id"], name)
+            moved += 1
+        groups.append({"name": name, "n": len(rows)})
+    return {"ok": True, "moved": moved, "groups": groups}
+
+
+@router.post("/summarize", summary="把现有记忆总结成一条（Pro）")
+async def summarize():
+    from ..llm import client
+
+    rows = meta.list_memories(120)
+    if not rows:
+        return {"ok": False, "text": "还没有记忆可总结"}
+    body = "\n".join(f"- [{r.get('group_name') or r.get('kind')}] {r['content']}" for r in rows)
+    try:
+        res = await asyncio.to_thread(
+            client.complete,
+            [{"role": "user", "content": "下面是我的长期记忆。用 200 字以内归纳一下我现在在做什么、"
+                                        "关心什么、有什么没完成的，用第二人称写，别分点。\n" + body}],
+            temperature=0.3,
+            scope="memory",
+        )
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"总结失败：{str(e)[:150]}") from e
+    text = res.content.strip()
+    if text:
+        meta.add_memory(text[:600], "summary")
+    return {"ok": True, "text": text}

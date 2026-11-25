@@ -26,6 +26,7 @@ EDITABLE = {
     "llm_base_url": "LLM_BASE_URL",
     "llm_api_key": "LLM_API_KEY",
     "llm_model": "LLM_MODEL",
+    "llm_gateway": "LLM_GATEWAY",
     "embed_base_url": "EMBED_BASE_URL",
     "embed_model": "EMBED_MODEL",
     "embed_dim": "EMBED_DIM",
@@ -39,6 +40,7 @@ class ConfigIn(BaseModel):
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None
+    llm_gateway: str | None = None
     embed_base_url: str | None = None
     embed_model: str | None = None
     embed_dim: int | None = None
@@ -52,6 +54,7 @@ def get_config():
         "llm_provider": settings.llm_provider,
         "llm_base_url": settings.llm_base_url,
         "llm_model": settings.llm_model,
+        "llm_gateway": settings.llm_gateway or "own",
         "llm_api_key_masked": ("***" + settings.llm_api_key[-4:]) if settings.llm_api_key else "",
         # 游客实际调的是这条，前端模型页拿它显示"当前免费模型"
         "guest_model": {

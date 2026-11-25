@@ -115,9 +115,9 @@ def _conf(provider: str | None) -> tuple[str, str, str, str]:
     显式指定其它服务商时用预设，避免串用错误地址。
 
     游客不看这两条：他就是走 Kilo 免费档，你 .env 里填了 deepseek 也不生效，
-    不然改一下配置就能白嫖自己的 Key 了。
+    不然改一下配置就能白嫖自己的 Key 了。激活用户也能把网关切到 kilo，图个不花自己的额度。
     """
-    if license.is_guest():
+    if license.is_guest() or (settings.llm_gateway or "").lower() == "kilo":
         return (
             settings.guest_llm_base_url,
             settings.guest_llm_model,
@@ -179,7 +179,15 @@ def _usage(raw: dict | None) -> dict[str, int]:
     }
 
 
-def _record(provider: str, model: str, usage: dict[str, int], scope: str, latency_ms: int) -> None:
+def _record(
+    provider: str,
+    model: str,
+    usage: dict[str, int],
+    scope: str,
+    latency_ms: int,
+    session_id: str = "",
+    task_id: str = "",
+) -> None:
     with _LOCK:
         for k in ("calls", "prompt_tokens", "completion_tokens", "total_tokens"):
             _STATS[k] += usage.get(k, 0)
@@ -192,7 +200,7 @@ def _record(provider: str, model: str, usage: dict[str, int], scope: str, latenc
     try:
         from ..db import models as meta
 
-        meta.add_usage(scope, provider, model, usage, latency_ms)
+        meta.add_usage(scope, provider, model, usage, latency_ms, session_id, task_id)
     except Exception as e:  # noqa: BLE001
         log.debug("用量入库失败：%s", e)
 
@@ -216,6 +224,8 @@ def complete(
     model: str | None = None,
     provider: str | None = None,
     scope: str = "chat",
+    session_id: str = "",
+    task_id: str = "",
 ) -> LLMResult:
     """scope 用于 token 统计分桶：chat / patrol / memory / probe。"""
     base_url, mdl, api_key, name = _conf(provider)
@@ -256,7 +266,7 @@ def complete(
     msg = (data.get("choices") or [{}])[0].get("message") or {}
     usage = _usage(data.get("usage"))
     latency = int((time.perf_counter() - started) * 1000)
-    _record(name, mdl, usage, scope, latency)
+    _record(name, mdl, usage, scope, latency, session_id, task_id)
     text = (msg.get("content") or "").strip()
     if not text:
         # 免费档常转到推理模型，字数少的时候正文是空的，全写在 reasoning 里
@@ -338,3 +348,59 @@ def probe() -> dict[str, Any]:
         return {"ok": True, "provider": r.provider, "model": r.model, "reply": r.content[:40]}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "provider": settings.llm_provider, "error": str(e)[:300]}
+
+
+def stream_text(
+    messages: list[dict[str, Any]],
+    scope: str = "chat",
+    session_id: str = "",
+    temperature: float | None = None,
+) -> Iterator[str]:
+    """流式回答，一个块一个块往外吐。这条路径不带工具，纯聊天用。
+
+    用 httpx 的 stream 读 SSE，只认 data: 开头的行，别的（心跳、注释）都跳过。
+    """
+    base_url, mdl, api_key, name = _conf()
+    if not base_url:
+        raise LLMError("模型地址为空，请先在设置里选择服务商")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    payload: dict[str, Any] = {
+        "model": mdl,
+        "messages": messages,
+        "temperature": settings.llm_temperature if temperature is None else temperature,
+        "stream": True,
+    }
+    url = base_url.rstrip("/") + "/chat/completions"
+    started = time.perf_counter()
+    chars = 0
+    with gate():
+        try:
+            with httpx.Client(timeout=settings.llm_timeout) as c:
+                with c.stream("POST", url, json=payload, headers=headers) as r:
+                    if r.status_code >= 400:
+                        raise LLMError(f"模型返回 {r.status_code}：{r.read()[:200]}")
+                    for line in r.iter_lines():
+                        line = (line or "").strip()
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if not data or data == "[DONE]":
+                            continue
+                        try:
+                            obj = json.loads(data)
+                        except ValueError:
+                            continue
+                        delta = ((obj.get("choices") or [{}])[0].get("delta") or {})
+                        piece = delta.get("content") or ""
+                        if piece:
+                            chars += len(piece)
+                            yield piece
+        except httpx.HTTPError as e:
+            raise LLMError(f"模型调用失败：{e}") from e
+
+    latency = int((time.perf_counter() - started) * 1000)
+    # 流式响应一般不回 usage，按字数估个大概，统计页看得过去就行
+    usage = {"calls": 1, "prompt_tokens": 0, "completion_tokens": chars // 2, "total_tokens": chars // 2}
+    _record(name, mdl, usage, scope, latency, session_id, "")

@@ -11,10 +11,25 @@ import KnowledgeView from './views/KnowledgeView.vue'
 import SettingsView from './views/SettingsView.vue'
 import UsageView from './views/UsageView.vue'
 import SystemView from './views/SystemView.vue'
+import NotesView from './views/NotesView.vue'
+import SkillsView from './views/SkillsView.vue'
+import HelpView from './views/HelpView.vue'
+import MigrateView from './views/MigrateView.vue'
 import { isGuest, loadLicense, loadSessions, me } from './store'
-import type { Tier } from './api'
+import { api, type Tier } from './api'
 
-type Tab = 'chat' | 'tasks' | 'memory' | 'kb' | 'model' | 'usage' | 'sys'
+type Tab =
+  | 'chat'
+  | 'tasks'
+  | 'memory'
+  | 'kb'
+  | 'notes'
+  | 'skills'
+  | 'model'
+  | 'usage'
+  | 'help'
+  | 'migrate'
+  | 'sys'
 
 const RANK: Record<Tier, number> = { guest: 0, free: 1, pro: 2 }
 
@@ -34,8 +49,12 @@ const tabs = [
   { key: 'tasks', icon: 'tasks', label: '任务', min: 'free', group: '工作台' },
   { key: 'memory', icon: 'memory', label: '记忆', min: 'free', group: '工作台' },
   { key: 'kb', icon: 'knowledge', label: '资料', min: 'free', group: '工作台' },
+  { key: 'notes', icon: 'note', label: '笔记', min: 'pro', group: '工作台' },
+  { key: 'skills', icon: 'key', label: '技能', min: 'free', group: '工作台' },
   { key: 'model', icon: 'settings', label: '模型', min: 'guest', group: '设置' },
   { key: 'usage', icon: 'usage', label: '用量', min: 'free', group: '设置' },
+  { key: 'help', icon: 'help', label: '帮助', min: 'guest', group: '设置' },
+  { key: 'migrate', icon: 'book', label: '迁移', min: 'pro', group: '设置' },
   { key: 'sys', icon: 'shield', label: '系统', min: 'guest', group: '设置' },
 ] as const
 
@@ -78,6 +97,32 @@ function focusChat() {
   window.dispatchEvent(new Event('sc:focus'))
 }
 
+// 新手引导：第一次进来浮在右下角，点完「知道了」就不再自己弹，帮助页还能重新打开
+const guide = ref<{ key: string; title: string; body: string; page: string }[]>([])
+const guideOpen = ref(false)
+const PAGE_TAB: Record<string, Tab> = { settings: 'model', chat: 'chat', knowledge: 'kb', tasks: 'tasks', system: 'sys' }
+
+async function loadGuide() {
+  try {
+    const r = await api.guide()
+    guide.value = r.items
+    guideOpen.value = !r.done
+  } catch {
+    /* 引导只是锦上添花，读不到就算了 */
+  }
+}
+function goStep(page: string) {
+  tab.value = PAGE_TAB[page] || 'chat'
+}
+async function closeGuide() {
+  guideOpen.value = false
+  try {
+    await api.guideDone()
+  } catch {
+    /* 标不上也没关系，下次再弹一遍 */
+  }
+}
+
 /** 托盘/快捷键唤起时后端会调它，直接跳对话页 */
 function bindEvents() {
   const es = new EventSource('/api/events')
@@ -98,9 +143,13 @@ function bindEvents() {
 onMounted(async () => {
   ;(window as any).__starclerkFocus = focusChat
   window.addEventListener('hashchange', syncFromHash)
+  window.addEventListener('sc:guide', () => {
+    guideOpen.value = true
+  })
   bindEvents()
   await loadLicense()
   await loadSessions()
+  await loadGuide()
 })
 </script>
 
@@ -145,11 +194,34 @@ onMounted(async () => {
           <TasksView v-else-if="tab === 'tasks'" />
           <MemoryView v-else-if="tab === 'memory'" />
           <KnowledgeView v-else-if="tab === 'kb'" />
+          <NotesView v-else-if="tab === 'notes'" />
+          <SkillsView v-else-if="tab === 'skills'" />
           <SettingsView v-else-if="tab === 'model'" />
           <UsageView v-else-if="tab === 'usage'" />
+          <HelpView v-else-if="tab === 'help'" />
+          <MigrateView v-else-if="tab === 'migrate'" />
           <SystemView v-else-if="tab === 'sys'" />
         </template>
       </main>
+    </div>
+
+    <div v-if="guideOpen && guide.length" class="guide">
+      <div class="guide-head">
+        <b>第一次用？几步就上手</b>
+        <button class="guide-x" title="关掉" @click="closeGuide">
+          <AppIcon name="close" :size="11" />
+        </button>
+      </div>
+      <ol class="guide-list">
+        <li v-for="(g, i) in guide" :key="g.key" @click="goStep(g.page)">
+          <span class="guide-no">{{ i + 1 }}</span>
+          <div>
+            <b>{{ g.title }}</b>
+            <p>{{ g.body }}</p>
+          </div>
+        </li>
+      </ol>
+      <button class="btn primary guide-ok" @click="closeGuide">知道了，别再弹</button>
     </div>
   </div>
 </template>

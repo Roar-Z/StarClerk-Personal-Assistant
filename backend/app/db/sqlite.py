@@ -51,6 +51,15 @@ CREATE TABLE IF NOT EXISTS license(
   id INTEGER PRIMARY KEY CHECK (id = 1), tier TEXT NOT NULL DEFAULT 'guest',
   code TEXT NOT NULL DEFAULT '', machine TEXT NOT NULL DEFAULT '',
   activated_at REAL NOT NULL DEFAULT 0, updated_at REAL NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS notes(
+  id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '',
+  pinned INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_notes_time ON notes(updated_at);
+CREATE TABLE IF NOT EXISTS skills(
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT '通用',
+  body TEXT NOT NULL DEFAULT '', builtin INTEGER NOT NULL DEFAULT 0,
+  use_count INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL);
 """
 
 
@@ -76,7 +85,12 @@ def _add_columns(c: sqlite3.Connection) -> None:
     """老版本的库缺字段时补上，省得用户升级还得删数据。"""
     for table, column, ddl in (
         ("memories", "group_name", "TEXT NOT NULL DEFAULT ''"),
+        ("memories", "source", "TEXT NOT NULL DEFAULT ''"),
         ("tasks", "workspace", "TEXT NOT NULL DEFAULT ''"),
+        ("tasks", "url", "TEXT NOT NULL DEFAULT ''"),
+        ("tasks", "last_value", "TEXT NOT NULL DEFAULT ''"),
+        ("usage", "session_id", "TEXT NOT NULL DEFAULT ''"),
+        ("usage", "task_id", "TEXT NOT NULL DEFAULT ''"),
     ):
         have = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
         if column not in have:

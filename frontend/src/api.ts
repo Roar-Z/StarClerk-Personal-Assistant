@@ -19,6 +19,7 @@ export interface Task {
   prompt: string
   kind: string
   doc_scope?: string
+  url?: string
   cron_minutes: number
   enabled: number
   last_result?: string
@@ -102,6 +103,7 @@ export interface Memory {
   id: string
   content: string
   kind: string
+  group_name?: string
   created_at?: number
 }
 export interface DocMeta {
@@ -188,7 +190,11 @@ async function req<T>(path: string, init?: RequestInit, quiet = false): Promise<
 export const api = {
   // 对话
   sessions: () => req<Session[]>('/chat/sessions', undefined, true),
+  // 搜会话是按内容搜的，和左边的列表不是一回事，所以单独开一个
+  sessionSearch: (q: string) =>
+    req<Session[]>(`/chat/sessions?q=${encodeURIComponent(q)}`, undefined, true),
   messages: (sid: string) => req<Msg[]>(`/chat/sessions/${sid}/messages`, undefined, true),
+  ocr: (image: string) => req<{ text: string }>('/chat/ocr', { method: 'POST', body: JSON.stringify({ image }) }),
   newSession: (title = '新对话') =>
     req<Session>('/chat/sessions', { method: 'POST', body: JSON.stringify({ title }) }),
   delSession: (sid: string) => req(`/chat/sessions/${sid}`, { method: 'DELETE' }),
@@ -216,11 +222,19 @@ export const api = {
     ),
 
   // 记忆
-  memories: () => req<Memory[]>('/memory'),
+  memories: (group = '') => req<Memory[]>(`/memory?group=${encodeURIComponent(group)}`),
   addMemory: (content: string, group = '') =>
     req<Memory>('/memory', { method: 'POST', body: JSON.stringify({ content, group }) }),
   delMemory: (id: string) => req(`/memory/${id}`, { method: 'DELETE' }),
-  memoryGroups: () => req<{ items: { name: string; n: number }[] }>('/memory/groups', undefined, true),
+  memoryGroups: () =>
+    req<{ items: { name: string; n: number }[]; ungrouped: number }>('/memory/groups', undefined, true),
+  moveMemory: (id: string, group: string) =>
+    req(`/memory/${id}/group`, { method: 'PATCH', body: JSON.stringify({ group }) }),
+  importMemories: (items: { content: string; kind: string; group: string }[]) =>
+    req<{ ok: boolean; added: number; skipped: number }>('/memory/backup', {
+      method: 'POST',
+      body: JSON.stringify(items),
+    }),
 
   // 知识库
   stats: () => req<{ chunks: number; memories: number; dim: number }>('/rag/stats', undefined, true),
@@ -240,6 +254,14 @@ export const api = {
     )
   },
   delDoc: (docId: string) => req(`/rag/documents/${docId}`, { method: 'DELETE' }),
+  // 批量摘要 / 翻译 / 抽表格，一次最多 10 份，后端串着跑
+  batchAi: (body: { doc_ids: string[]; action: 'summary' | 'translate' | 'table'; lang?: string }) =>
+    req<{
+      action: string
+      items: { doc_id: string; source: string; ok: boolean; text: string }[]
+      csv: string
+      ok_count: number
+    }>('/rag/batch-ai', { method: 'POST', body: JSON.stringify(body) }),
 
   // 思维导图（Pro）
   mindmaps: () => req<{ id: string; title: string; size: number }[]>('/mindmap'),
@@ -283,7 +305,127 @@ export const api = {
     }),
   pruneLogs: () => req<{ ok: boolean; removed: number }>('/system/logs', { method: 'DELETE' }),
   uninstall: () => req<{ ok: boolean; path: string }>('/system/uninstall', { method: 'POST' }),
+
+  // 笔记（Pro）
+  notes: (q = '', category = '') =>
+    req<{ items: Note[]; total: number; categories: { category: string; n: number }[] }>(
+      `/notes?q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`,
+    ),
+  noteSearch: (q: string) =>
+    req<{ q: string; notes: Note[]; docs: DocMeta[] }>(`/notes/search?q=${encodeURIComponent(q)}`),
+  addNote: (body: Partial<Note>) => req<Note>('/notes', { method: 'POST', body: JSON.stringify(body) }),
+  saveNote: (id: string, body: Partial<Note>) =>
+    req<Note>(`/notes/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delNote: (id: string) => req(`/notes/${id}`, { method: 'DELETE' }),
+
+  // 技能模板
+  skills: (category = '') =>
+    req<{ items: Skill[]; categories: string[]; total: number }>(
+      `/skills?category=${encodeURIComponent(category)}`,
+    ),
+  addSkill: (body: { name: string; category: string; body: string }) =>
+    req<Skill>('/skills', { method: 'POST', body: JSON.stringify(body) }),
+  saveSkill: (id: string, body: Partial<Skill>) =>
+    req<Skill>(`/skills/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delSkill: (id: string) => req(`/skills/${id}`, { method: 'DELETE' }),
+  useSkill: (id: string) => req<Skill>(`/skills/${id}/use`, { method: 'POST' }),
+  importSkills: (items: { name: string; category: string; body: string }[]) =>
+    req<{ ok: boolean; added: number }>('/skills/import', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
+
+  // 记忆（Pro 那几个）
+  memoryProfile: () =>
+    req<{
+      kinds: { kind: string; n: number }[]
+      groups: { name: string; n: number }[]
+      recent: { content: string; kind: string; group_name: string; updated_at: number }[]
+      total: number
+    }>('/memory/profile'),
+  organizeMemory: () =>
+    req<{ ok: boolean; moved: number; groups: { name: string; n: number }[] }>('/memory/organize', {
+      method: 'POST',
+    }),
+  summarizeMemory: () => req<{ ok: boolean; text: string }>('/memory/summarize', { method: 'POST' }),
+
+  // 用量明细（Pro）
+  usageDetail: (days = 30) =>
+    req<{
+      days: number
+      by_session: { sid: string; title: string; calls: number; total_tokens: number }[]
+      by_task: { tid: string; name: string; calls: number; total_tokens: number }[]
+      alert: { days: number; used: number; limit: number; over: boolean }
+    }>(`/stats/usage/detail?days=${days}`),
+
+  // 数据迁移（Pro）
+  migrateInfo: () => req<MigrateInfo>('/migrate/info'),
+  importPack: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return req<{ ok: boolean; restart: boolean; msg: string }>('/migrate/import', {
+      method: 'POST',
+      body: fd,
+    })
+  },
+
+  // 帮助 / 引导 / 更新
+  help: () => req<{ title: string; version: string; markdown: string }>('/system/help', undefined, true),
+  guide: () =>
+    req<{ items: { key: string; title: string; body: string; page: string }[]; done: boolean }>(
+      '/system/guide',
+      undefined,
+      true,
+    ),
+  guideDone: () => req('/system/guide/done', { method: 'POST' }),
+  checkUpdate: () =>
+    req<{ current: string; latest: string; has_new: boolean; file: string; folder: string; checked_at: string }>(
+      '/system/update',
+      undefined,
+      true,
+    ),
 }
+
+export interface Note {
+  id: string
+  title: string
+  body: string
+  category: string
+  tags: string
+  pinned: number
+  created_at: number
+  updated_at: number
+}
+
+export interface Skill {
+  id: string
+  name: string
+  category: string
+  body: string
+  builtin: number
+  use_count: number
+  updated_at: number
+}
+
+export interface MigrateInfo {
+  data_dir: string
+  db: string
+  size: number
+  counts: { sessions: number; notes: number; skills: number; memories: number; tasks: number }
+  tier: Tier
+  backups: string[]
+}
+
+export interface StreamHandlers {
+  onMeta?: (sessionId: string) => void
+  onDelta: (text: string) => void
+  onDone: (r: {
+    answer: string
+    contexts: { source: string; text: string }[]
+    quota?: GuestQuota
+  }) => void
+}
+
 
 /** 带文件头的下载交给浏览器，导出接口都在后端拼好了 Content-Disposition */
 export function download(path: string) {
@@ -293,4 +435,62 @@ export function download(path: string) {
   document.body.appendChild(a)
   a.click()
   a.remove()
+}
+
+/**
+ * 流式对话。自己读 SSE，一行行往下切；async 生成器在这不好用，就手写个循环。
+ * 断开连接靠 AbortController，切会话或者关页面时调一下就行。
+ */
+export async function chatStream(
+  body: { session_id?: string; message: string; use_rag: boolean; workspace?: string },
+  h: StreamHandlers,
+  ctrl?: AbortController,
+): Promise<void> {
+  const res = await fetch(`${BASE}/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: ctrl?.signal,
+  })
+  if (!res.ok || !res.body) {
+    let msg = `请求失败（${res.status}）`
+    try {
+      msg = (await res.json()).detail || msg
+    } catch {
+      /* 不是 JSON 就用默认那句 */
+    }
+    toast(msg)
+    throw new Error(msg)
+  }
+  const reader = res.body.getReader()
+  const dec = new TextDecoder()
+  let buf = ''
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buf += dec.decode(value, { stream: true })
+    const size = buf.split('\n\n')
+    buf = size.pop() || ''
+    for (const part of size) {
+      const line = part.trim()
+      if (!line.startsWith('data:')) continue
+      let evt: any
+      try {
+        evt = JSON.parse(line.slice(5))
+      } catch {
+        continue
+      }
+      if (evt.type === 'meta') h.onMeta?.(evt.session_id)
+      else if (evt.type === 'delta') h.onDelta(evt.text)
+      else if (evt.type === 'done') h.onDone(evt)
+      else if (evt.type === 'error') {
+        toast(evt.message || '模型出错了')
+        throw new Error(evt.message || '模型出错了')
+      }
+    }
+  }
+}
+
+export function exportChat(sid: string, fmt: 'md' | 'txt' | 'docx') {
+  download(`/chat/export?sid=${encodeURIComponent(sid)}&fmt=${fmt}`)
 }

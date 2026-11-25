@@ -95,6 +95,25 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* 盯网页的任务多一行地址，单行省略，鼠标悬停看全 */
+.task-url {
+  margin: -4px 0 8px;
+  font-size: 10.5px;
+  color: var(--sc-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip.url {
+  color: var(--sc-accent);
+  border-color: rgba(58, 86, 212, 0.28);
+}
+.form-tip {
+  margin: -6px 0 10px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--sc-muted);
+}
 .task-foot {
   display: flex;
   align-items: center;

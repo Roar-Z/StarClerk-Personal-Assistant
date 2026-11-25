@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.deepseek.com/v1"
     llm_api_key: str = ""
     llm_model: str = "deepseek-chat"
+    # own = 用自己填的 Key；kilo = 走平台免费网关（激活用户也能选，省点钱）
+    llm_gateway: str = "own"
     llm_temperature: float = 0.5
     llm_timeout: float = 60
 
@@ -133,6 +135,7 @@ LLM_PROVIDER=deepseek
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_API_KEY=
 LLM_MODEL=deepseek-chat
+LLM_GATEWAY=own
 # 游客固定用的免费模型（Kilo 网关免费档，Key 可留空）
 GUEST_LLM_BASE_URL=https://ai-gateway.kilo.ai/api/v1
 GUEST_LLM_MODEL=kilo-auto/free

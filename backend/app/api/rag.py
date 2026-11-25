@@ -188,3 +188,47 @@ def extract(body: ExtractIn):
     except ValueError as e:
         raise HTTPException(422, "模型没按 JSON 返回，稍后再试一次") from e
     return {"doc_id": body.doc_id, "fields": data, "model": res.model}
+
+
+# ---------------- Pro：批量摘要 / 翻译 / 抽表格 ----------------
+_BATCH_PROMPT = {
+    "summary": "把下面这份文档压成 5 条以内的要点，一行一条，别写开场白和总结句。\n\n{text}",
+    "translate": "把下面内容翻译成{lang}，术语和数字保持原样，只输出译文。\n\n{text}",
+    "table": "把文中所有表格转成 CSV，字段里带逗号的用双引号包住。只输出 CSV，"
+    "一个表格都没有就输出一行「没有表格」。\n\n{text}",
+}
+
+
+class BatchAiIn(BaseModel):
+    doc_ids: list[str] = Field(min_length=1, max_length=10)
+    action: str = Field(default="summary", pattern="^(summary|translate|table)$")
+    lang: str = "中文"
+
+
+@router.post("/batch-ai", summary="批量摘要 / 翻译 / 抽表格（Pro）")
+def batch_ai(body: BatchAiIn):
+    """一次最多 10 份，串着跑。并发开满容易撞上游限流，慢一点反而稳。"""
+    sources = {d.get("doc_id"): d.get("source", "") for d in vs.list_documents()}
+    items: list[dict[str, Any]] = []
+    csv_parts: list[str] = []
+    for doc_id in body.doc_ids:
+        text = vs.document_text(doc_id, 8000)
+        source = sources.get(doc_id, "")
+        if len(text) < 10:
+            items.append({"doc_id": doc_id, "source": source, "ok": False, "text": "文档不存在或没有正文"})
+            continue
+        prompt = _BATCH_PROMPT[body.action].format(text=text, lang=body.lang)
+        try:
+            res = client.complete([{"role": "user", "content": prompt}], temperature=0.2, scope="batch")
+            content = res.content.strip()
+            items.append({"doc_id": doc_id, "source": source, "ok": True, "text": content})
+            if body.action == "table" and "没有表格" not in content:
+                csv_parts.append(f"# {source}\n{content}")
+        except Exception as e:  # noqa: BLE001  单份失败不影响后面
+            items.append({"doc_id": doc_id, "source": source, "ok": False, "text": str(e)[:200]})
+    return {
+        "action": body.action,
+        "items": items,
+        "csv": "\n\n".join(csv_parts),
+        "ok_count": sum(1 for i in items if i["ok"]),
+    }

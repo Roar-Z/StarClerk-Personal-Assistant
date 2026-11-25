@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, type UsageSummary } from '../api'
+import { isPro } from '../store'
 
 const days = ref(7)
 const summary = ref<UsageSummary>()
 const overview = ref<any>()
+// Pro 才有：哪个会话、哪条任务更费 token
+const detail = ref<Awaited<ReturnType<typeof api.usageDetail>>>()
 
 const totals = computed(() => summary.value?.totals)
 const scopeName: Record<string, string> = { chat: '对话', patrol: '后台巡检', memory: '记忆抽取', probe: '连接测试' }
@@ -16,6 +19,13 @@ async function load() {
     overview.value = o
   } catch {
     /* 统一提示已处理 */
+  }
+  if (isPro.value) {
+    try {
+      detail.value = await api.usageDetail(days.value)
+    } catch {
+      detail.value = undefined
+    }
   }
 }
 
@@ -115,6 +125,41 @@ onMounted(load)
           </div>
         </div>
 
+        <template v-if="isPro && detail">
+          <div v-if="detail.alert.over" class="alert-bar">
+            近 {{ detail.alert.days }} 天已经用掉 {{ fmt(detail.alert.used) }} token，超过 {{ fmt(detail.alert.limit) }} 的预警线了，留意一下费用。
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">最费 token 的会话</span>
+              <span class="card-hint">近 {{ detail.days }} 天</span>
+            </div>
+            <div class="card-body usage-list">
+              <div v-for="row in detail.by_session" :key="row.sid" class="usage-row">
+                <span class="usage-name" :title="row.title">{{ row.title || '未命名会话' }}</span>
+                <span class="usage-bar"><i :style="{ width: widthOf(row.total_tokens, totals?.total_tokens || 0) }" /></span>
+                <span class="usage-val">{{ row.calls }} 次 / {{ fmt(row.total_tokens) }}</span>
+              </div>
+              <p v-if="!detail.by_session.length" class="empty">这段时间没有带会话的调用</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">最费 token 的巡检任务</span>
+            </div>
+            <div class="card-body usage-list">
+              <div v-for="row in detail.by_task" :key="row.tid" class="usage-row">
+                <span class="usage-name">{{ row.name }}</span>
+                <span class="usage-bar"><i :style="{ width: widthOf(row.total_tokens, totals?.total_tokens || 0) }" /></span>
+                <span class="usage-val">{{ row.calls }} 次 / {{ fmt(row.total_tokens) }}</span>
+              </div>
+              <p v-if="!detail.by_task.length" class="empty">还没有后台跑过的任务</p>
+            </div>
+          </div>
+        </template>
+
         <div class="card">
           <div class="card-head">
             <span class="card-title">档位</span>
@@ -142,3 +187,13 @@ onMounted(load)
 </template>
 
 <style scoped src="../styles/views.css"></style>
+<style scoped>
+.alert-bar {
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: #8a5a1f;
+  background: rgba(214, 158, 46, 0.08);
+  border: 1px solid rgba(214, 158, 46, 0.28);
+  border-radius: 8px;
+}
+</style>

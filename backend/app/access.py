@@ -26,9 +26,16 @@ FEATURES: dict[str, str] = {
     "workspace": "pro",  # 多知识库工作区
     "extract": "pro",  # 票据抽取
     "batch": "pro",  # 文档批量导入导出
+    "batch_ai": "pro",  # 批量摘要 / 翻译 / 表格
     "memory_group": "pro",  # 记忆分组 / 归档
     "memory_backup": "pro",  # 记忆备份导入导出
+    "profile": "pro",  # 画像与智能整理
+    "note": "pro",  # 笔记知识库
+    "skill_view": "free",  # 内置模板只读也给免费版看
+    "skill_write": "pro",  # 新建/编辑/导入导出
     "log_export": "pro",  # 巡检日志导出
+    "migrate": "pro",  # 数据迁移
+    "usage_detail": "pro",  # 按会话/任务拆用量、告警
 }
 
 # (方法, 路径前缀, 功能)；从上往下匹配，命中第一条就停
@@ -38,6 +45,7 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("*", "/api/health", "chat"),
     ("*", "/api/events", "chat"),
     ("GET", "/api/chat/export", "export"),
+    ("*", "/api/stats/usage/detail", "usage_detail"),
     ("GET", "/api/chat/sessions/", "chat"),  # 单个会话的消息，游客也能读内存里的
     ("*", "/api/chat/sessions", "session"),
     ("*", "/api/chat", "chat"),
@@ -47,9 +55,17 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("*", "/api/tasks", "tasks"),
     ("*", "/api/memory/backup", "memory_backup"),
     ("*", "/api/memory/groups", "memory_group"),
+    ("*", "/api/memory/profile", "profile"),
+    ("*", "/api/memory/organize", "profile"),
+    ("*", "/api/memory/summarize", "profile"),
     ("*", "/api/memory", "memory"),
+    ("*", "/api/notes", "note"),
+    ("GET", "/api/skills", "skill_view"),
+    ("*", "/api/skills", "skill_write"),
+    ("*", "/api/migrate", "migrate"),
     ("*", "/api/rag/workspaces", "workspace"),
     ("*", "/api/rag/extract", "extract"),
+    ("*", "/api/rag/batch-ai", "batch_ai"),
     ("*", "/api/rag/batch", "batch"),
     ("*", "/api/rag", "rag"),
     ("*", "/api/stats", "usage"),
@@ -63,9 +79,9 @@ RULES: tuple[tuple[str, str, str], ...] = (
 
 # 各档位的数量上限，超出就 409，别让一个免费用户塞满向量库
 LIMITS: dict[str, dict[str, int]] = {
-    "guest": {"tasks": 0, "docs": 0, "memories": 0},
-    "free": {"tasks": 5, "docs": 5, "memories": 200},
-    "pro": {"tasks": 20, "docs": 500, "memories": 2000},
+    "guest": {"tasks": 0, "docs": 0, "memories": 0, "notes": 0},
+    "free": {"tasks": 5, "docs": 5, "memories": 200, "notes": 0},
+    "pro": {"tasks": 20, "docs": 500, "memories": 2000, "notes": 500},
 }
 
 _NEED_LABEL = {"free": "免费版", "pro": "Pro 版"}

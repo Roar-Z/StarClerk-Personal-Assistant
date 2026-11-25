@@ -175,6 +175,89 @@ def uninstall():
     return {"ok": True, "path": str(exe)}
 
 
+# ---------------------------------------------------------------- 帮助 / 引导 / 更新
+_HELP = """## 开始用
+
+1. 到「模型」页挑一个服务商，填上自己的 key（游客只能用 Kilo 的免费模型）。
+2. 回到「对话」，第一句话随便问，先确认能通。
+3. 想让它认你的资料，去「知识库」传文档；免费版最多 5 份。
+
+## 常用操作
+
+- **导出对话**：对话页右上角，Markdown / 纯文本 / Word 三种。
+- **让它定时盯着**：任务页新建，写清要它判断什么；填了网址就按网页变化触发。
+- **记住你的习惯**：记忆页能看到它记了什么，不对的单条删掉。
+- **换电脑**：Pro 版的系统页有迁移向导，导出 zip 带走。
+
+## 数据在哪
+
+全在安装目录的 `data` 下。`starcLerk.db` 是数据库，`uploads` 是传的文档，
+`lancedb` 是向量索引。想彻底清掉就用系统页的清理工具。
+
+## 卡住了
+
+- 模型报 401：key 不对或过期。
+- 模型报 429：上游限流，等一会儿或者换个模型。
+- 检索没结果：文档切片没建好，把文档删了重传一次。
+"""
+
+_GUIDE = [
+    {"key": "model", "title": "选模型", "body": "「模型」页挑服务商、填 key，点测试连接看到回复就算通了。", "page": "settings"},
+    {"key": "chat", "title": "问第一句", "body": "直接打字问，Ctrl+Enter 发送。回答下面能看到用到的资料。", "page": "chat"},
+    {"key": "rag", "title": "传份资料", "body": "「知识库」页拖文件进去，建好索引后对话会自动检索。", "page": "knowledge"},
+    {"key": "task", "title": "挂个任务", "body": "想让它在后台盯事情，去「任务」页新建，填网址就按页面变化提醒。", "page": "tasks"},
+    {"key": "tier", "title": "看看能用到哪", "body": "「系统」页能看到当前档位和各项额度，需要更多功能就在那激活。", "page": "system"},
+]
+
+
+@router.get("/help", summary="内置帮助文档")
+def help_doc():
+    return {"title": f"{APP_NAME} 使用说明", "version": APP_VERSION, "markdown": _HELP}
+
+
+@router.get("/guide", summary="新手引导清单")
+def guide():
+    return {"items": _GUIDE, "done": bool(meta.kv_get("guide_done"))}
+
+
+@router.post("/guide/done", summary="标记引导已看完")
+def guide_done():
+    meta.kv_set("guide_done", True)
+    return {"ok": True}
+
+
+def _ver(text: str) -> tuple[int, ...]:
+    try:
+        return tuple(int(x) for x in text.split("."))
+    except ValueError:
+        return ()
+
+
+@router.get("/update", summary="手动检查更新（看本地安装包）")
+def check_update():
+    """不联网。扫 exe 同目录的安装包，版本号比当前高就提示一下。"""
+    import re
+
+    folder = Path(sys.executable).parent if is_frozen() else Path(__file__).resolve().parents[3] / "dist"
+    latest, target = APP_VERSION, None
+    if folder.is_dir():
+        for p in folder.glob("*.exe"):
+            m = re.search(r"(\d+\.\d+\.\d+)", p.name)
+            if not m:
+                continue
+            if _ver(m.group(1)) > _ver(latest):
+                latest, target = m.group(1), p
+    has_new = bool(target) and _ver(latest) > _ver(APP_VERSION)
+    return {
+        "current": APP_VERSION,
+        "latest": latest,
+        "has_new": has_new,
+        "file": str(target) if target else "",
+        "folder": str(folder),
+        "checked_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+
+
 @router.post("/clean", summary="一键清理：会话 / 向量库 / 配置")
 def clean(body: CleanIn):
     targets = ["sessions", "vector", "config"] if body.what == "all" else [body.what]

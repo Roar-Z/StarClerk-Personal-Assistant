@@ -21,11 +21,69 @@ const mmBusy = ref(false)
 const mmDoc = ref('')
 const mmResult = ref<MindMap | null>(null)
 
+// 批量处理：勾几份出来做摘要/翻译/抽表格，最多 10 份
+const picked = ref<string[]>([])
+const batchOpen = ref(false)
+const batchAction = ref<'summary' | 'translate' | 'table'>('summary')
+const batchLang = ref('中文')
+const batchBusy = ref(false)
+const batchRes = ref<{ source: string; ok: boolean; text: string }[]>([])
+const batchCsv = ref('')
+
+function togglePick(id: string) {
+  const i = picked.value.indexOf(id)
+  if (i >= 0) picked.value.splice(i, 1)
+  else if (picked.value.length < 10) picked.value.push(id)
+  else ElMessage.warning('一次最多选 10 份')
+}
+
+function openBatch() {
+  batchRes.value = []
+  batchCsv.value = ''
+  batchOpen.value = true
+}
+
+async function runBatch() {
+  if (!picked.value.length) return ElMessage.warning('先选中要处理的资料')
+  batchBusy.value = true
+  try {
+    const r = await api.batchAi({ doc_ids: picked.value, action: batchAction.value, lang: batchLang.value })
+    batchRes.value = r.items
+    batchCsv.value = r.csv
+    ElMessage.success(`${r.ok_count}/${r.items.length} 份处理好了`)
+  } catch {
+    /* 提示在 api 层 */
+  } finally {
+    batchBusy.value = false
+  }
+}
+
+/** 表格结果直接存 csv，Excel 打开就行 */
+function saveCsv() {
+  const blob = new Blob([`\ufeff${batchCsv.value}`], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `tables-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+async function copyAll() {
+  const body = batchRes.value.map((x) => `【${x.source}】\n${x.text}`).join('\n\n')
+  try {
+    await navigator.clipboard.writeText(body)
+    ElMessage.success('已经复制到剪贴板')
+  } catch {
+    ElMessage.warning('剪贴板不给用，手动选中复制吧')
+  }
+}
+
 async function refresh() {
   try {
     const [s, d] = await Promise.all([api.stats(), api.documents(ws.value)])
     stats.value = s
     docs.value = d
+    picked.value = picked.value.filter((id) => d.some((x) => x.doc_id === id))
     if (isPro.value) workspaces.value = (await api.workspaces()).items
   } catch {
     /* 提示在 api 层 */
@@ -118,6 +176,9 @@ onMounted(refresh)
         <el-option v-for="w in workspaces" :key="w.name" :label="`${w.name} ${w.docs}`" :value="w.name" />
       </el-select>
       <input ref="fileInput" type="file" multiple accept=".txt,.md,.csv,.log,.json" hidden @change="uploadFiles" />
+      <button v-if="isPro" class="btn-ghost" :disabled="!picked.length" @click="openBatch">
+        批量{{ picked.length ? `(${picked.length})` : '' }}
+      </button>
       <button v-if="isPro" class="btn-ghost" :disabled="!docs.length" @click="openMindmap()">导图</button>
       <button class="btn-dark" :disabled="busy" @click="fileInput?.click()">
         <AppIcon name="upload" :size="14" />
@@ -160,6 +221,12 @@ onMounted(refresh)
           </div>
           <div class="card-body doc-list">
             <div v-for="d in docs" :key="d.doc_id" class="doc-row">
+              <el-checkbox
+                v-if="isPro"
+                :model-value="picked.includes(d.doc_id)"
+                class="doc-pick"
+                @change="togglePick(d.doc_id)"
+              />
               <div class="doc-main">
                 <span class="doc-name" :title="d.source">{{ d.source }}</span>
                 <span class="doc-meta">{{ d.chunks }} 段 · {{ d.workspace }}</span>
@@ -194,7 +261,88 @@ onMounted(refresh)
         </el-button>
       </div>
     </el-dialog>
+
+    <el-dialog v-model="batchOpen" title="批量处理" width="620px" append-to-body>
+      <div class="batch-top">
+        <el-radio-group v-model="batchAction" size="small">
+          <el-radio-button value="summary">摘要</el-radio-button>
+          <el-radio-button value="translate">翻译</el-radio-button>
+          <el-radio-button value="table">抽表格</el-radio-button>
+        </el-radio-group>
+        <el-input v-if="batchAction === 'translate'" v-model="batchLang" size="small" style="width: 110px" />
+        <span class="card-hint">已选 {{ picked.length }} 份</span>
+      </div>
+
+      <div v-if="batchRes.length" class="batch-res sc-scroll">
+        <article v-for="(r, i) in batchRes" :key="i" class="batch-item">
+          <header>
+            <b>{{ r.source }}</b>
+            <em :class="{ bad: !r.ok }">{{ r.ok ? '完成' : '失败' }}</em>
+          </header>
+          <pre>{{ r.text }}</pre>
+        </article>
+      </div>
+      <p v-else class="muted-line" style="margin: 12px 0 0">
+        一次最多 10 份，串行跑，慢是慢点但不容易被上游限流。
+      </p>
+
+      <template #footer>
+        <el-button v-if="batchAction === 'table' && batchCsv" size="small" @click="saveCsv">存成 CSV</el-button>
+        <el-button v-if="batchRes.length" size="small" @click="copyAll">复制全部</el-button>
+        <el-button size="small" type="primary" :loading="batchBusy" @click="runBatch">开始</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <style scoped src="../styles/views.css"></style>
+<style scoped>
+.doc-pick {
+  margin-right: 8px;
+  height: auto;
+}
+.batch-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.batch-res {
+  max-height: 340px;
+  margin-top: 12px;
+}
+.batch-item {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--sc-line);
+}
+.batch-item:last-child {
+  border-bottom: 0;
+}
+.batch-item header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.batch-item b {
+  font-size: 12px;
+  font-weight: 600;
+}
+.batch-item em {
+  font-style: normal;
+  font-size: 10.5px;
+  color: #2e7d5b;
+}
+.batch-item em.bad {
+  color: var(--sc-danger);
+}
+.batch-item pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--sc-text-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+</style>

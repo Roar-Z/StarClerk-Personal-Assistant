@@ -44,3 +44,14 @@ def usage(days: int = 7):
 @router.get("/errors", summary="最近异常")
 def errors(limit: int = 30):
     return meta.list_errors(max(1, min(limit, 200)))
+
+
+@router.get("/usage/detail", summary="按会话/任务分开看用量（Pro）")
+def usage_detail(days: int = 30):
+    days = max(1, min(days, 90))
+    return {
+        "days": days,
+        "by_session": meta.usage_by_session(days),
+        "by_task": meta.usage_by_task(days),
+        "alert": meta.usage_alerts(1),
+    }
