@@ -562,3 +562,235 @@ button {
 .sum b {
   color: var(--text);
 }
+
+/* ---------- 步骤条 ---------- */
+.steps {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  height: 54px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.step .num {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 1px solid #d8dde5;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--muted);
+  background: #fff;
+}
+
+.step.on {
+  color: var(--text);
+}
+
+.step.on .num {
+  background: #1f2937;
+  border-color: #1f2937;
+  color: #fff;
+}
+
+.step.done .num {
+  border-color: #c3cbd6;
+  color: var(--ok);
+}
+
+.step.done {
+  color: var(--text2);
+}
+
+.step-line {
+  flex: 1;
+  height: 1px;
+  margin: 0 12px;
+  background: var(--line);
+}
+
+/* ---------- 分页 ---------- */
+.page[hidden] {
+  display: none;
+}
+
+.page-head {
+  margin: 0 2px 14px;
+}
+
+.page-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.page-head p {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  color: var(--text2);
+  line-height: 1.65;
+}
+
+/* ---------- 路径输入 ---------- */
+.field {
+  margin-bottom: 14px;
+}
+
+.field > span {
+  display: block;
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+
+.path-row {
+  display: flex;
+  gap: 8px;
+}
+
+.path-row input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 11px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.path-row input:focus {
+  outline: none;
+  border-color: #b9c0cb;
+}
+
+.hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.hint.bad {
+  color: var(--danger);
+}
+
+/* ---------- 附加任务 ---------- */
+.opt {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+
+.opt:last-child {
+  border-bottom: 0;
+}
+
+.opt input {
+  width: 15px;
+  height: 15px;
+  margin: 2px 0 0;
+  accent-color: #1f2937;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.opt b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.opt span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ---------- 进度 ---------- */
+.progress {
+  height: 4px;
+  border-radius: 99px;
+  background: #eaedf2;
+  overflow: hidden;
+  margin: 4px 0 10px;
+}
+
+.progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #1f2937;
+  transition: width 0.25s ease;
+}
+
+.step-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.step-log li {
+  padding: 5px 0;
+  color: var(--muted);
+}
+
+.step-log li.now {
+  color: var(--text);
+}
+
+.step-log li.ok::before {
+  content: "✓ ";
+  color: var(--ok);
+}
+
+.step-log li.bad {
+  color: var(--danger);
+}
+
+.done-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #eaf4ef;
+  color: var(--ok);
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.sum-box {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 6px 12px;
+  padding: 13px 15px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
+  color: var(--text2);
+}
+
+.sum-box b {
+  font-weight: 500;
+  color: var(--text);
+  word-break: break-all;
+}

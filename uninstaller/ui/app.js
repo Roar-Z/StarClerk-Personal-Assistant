@@ -1,5 +1,6 @@
-/* 卸载向导的交互，逻辑都在这一页里，后端只负责扫盘和删文件 */
+/* 卸载向导：四步走，后端只管扫盘和删文件，流程都在这 */
 const state = {
+  step: 1,
   items: [],
   picked: new Set(),
   scan: null,
@@ -8,6 +9,7 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
+const LEVEL_TEXT = { safe: '可清理', warn: '注意', danger: '不可恢复' };
 
 function api() {
   return window.pywebview && window.pywebview.api;
@@ -21,7 +23,9 @@ function esc(text) {
     .replace(/"/g, '&quot;');
 }
 
-const LEVEL_TEXT = { safe: '可清理', warn: '注意', danger: '不可恢复' };
+function itemOf(key) {
+  return state.items.find((i) => i.key === key);
+}
 
 // ---------------------------------------------------------------- 首屏
 async function boot() {
@@ -46,7 +50,7 @@ async function boot() {
 
   $('list').innerHTML = state.items.map(rowHtml).join('');
   syncRows();
-  syncFooter();
+  syncNext();
 }
 
 function rowHtml(item) {
@@ -69,8 +73,8 @@ function rowHtml(item) {
 }
 
 function paintGuard(guard) {
-  const run = $('run');
   if (!guard) return;
+  const run = $('run');
   if (guard.running) {
     run.textContent = guard.can_kill ? '正在运行（端口 ' + guard.port + '）' : '正在运行';
     run.className = 'bad';
@@ -83,37 +87,57 @@ function paintGuard(guard) {
   }
 }
 
-// ---------------------------------------------------------------- 勾选
-function itemOf(key) {
-  return state.items.find((i) => i.key === key);
+// ---------------------------------------------------------------- 步骤切换
+function showStep(n) {
+  state.step = n;
+  for (let i = 1; i <= 4; i += 1) $('page' + i).hidden = i !== n;
+
+  document.querySelectorAll('.step').forEach((el) => {
+    const s = Number(el.dataset.s);
+    el.classList.toggle('on', s === n);
+    el.classList.toggle('done', s < n);
+  });
+
+  $('prev').hidden = n === 1 || n === 4;
+  $('next').hidden = n === 3 || n === 4;
+  $('go').hidden = n !== 3;
+  $('finish').hidden = n !== 4;
+  $('all').hidden = n !== 2;
+  $('cancel').textContent = n === 4 ? '关闭' : '取消';
+  if (n === 3) renderConfirm();
 }
 
+function goto(n) {
+  if (state.busy) return;
+  if (n === 3 && state.picked.size === 0) return;
+  showStep(n);
+}
+
+// ---------------------------------------------------------------- 勾选
 function syncRows() {
   document.querySelectorAll('.row').forEach((row) => {
-    const box = row.querySelector('input');
     const on = state.picked.has(row.dataset.key);
-    box.checked = on;
+    row.querySelector('input').checked = on;
     row.classList.toggle('checked', on);
     const note = row.querySelector('[data-note]');
     if (note) note.hidden = !on;
   });
 }
 
-function syncFooter() {
-  const n = state.picked.size;
-  $('go').disabled = state.busy || n === 0;
-  $('go').textContent = n ? '卸载所选内容（' + n + ' 项）' : '卸载所选内容';
+function syncNext() {
+  $('next').disabled = state.busy || (state.step === 2 && state.picked.size === 0);
+  if (state.step !== 2) return;
 
-  const dataKeys = state.scan ? state.scan.all_keys : [];
-  const allOn = dataKeys.length > 0 && dataKeys.every((k) => state.picked.has(k));
+  const keys = state.scan ? state.scan.all_keys : [];
+  const allOn = keys.length > 0 && keys.every((k) => state.picked.has(k));
   $('all').textContent = allOn ? '取消全选' : '删除所有数据';
 
-  const keys = [...state.picked];
-  const hasDanger = keys.some((k) => (itemOf(k) || {}).level === 'danger');
-  const hasProgram = keys.includes('program');
+  const picked = [...state.picked];
+  const hasDanger = picked.some((k) => (itemOf(k) || {}).level === 'danger');
+  const hasProgram = picked.includes('program');
   const banner = $('banner');
 
-  if (!n) {
+  if (!picked.length) {
     banner.hidden = true;
     return;
   }
@@ -129,105 +153,95 @@ function syncFooter() {
         : '配置、授权、会话这类数据删掉要重新设置或重新导入。';
 }
 
-// ---------------------------------------------------------------- 弹窗
-function openDialog() {
-  state.result = null;
-  clearResult();
-  $('dlg-title').textContent = '确认删除';
-  $('dlg-sub').textContent = '以下 ' + state.picked.size + ' 项内容会被永久删除，本机没有备份。';
-  $('dlg-list').innerHTML = [...state.picked].map((key) => {
+// ---------------------------------------------------------------- 确认页
+function renderConfirm() {
+  const picked = [...state.picked];
+  const freed = picked.reduce((sum, k) => sum + ((itemOf(k) || {}).size || 0), 0);
+  const data = state.scan || {};
+
+  $('summary').innerHTML =
+    '<span>安装目录</span><b>' + esc(data.install_dir || '—') + '</b>' +
+    '<span>删除项</span><b>' + picked.length + ' 项，约 ' + esc(human(freed)) + '</b>';
+
+  $('picked-list').innerHTML = picked.map((key) => {
     const it = itemOf(key) || {};
-    return '<li><span>' + esc(it.title || key) + '</span><span class="tag ' + esc(it.level) + '">' +
-      LEVEL_TEXT[it.level] + '</span></li>';
+    return '<li><span>' + esc(it.title || key) + '</span>' +
+      '<span class="tag ' + esc(it.level) + '">' + LEVEL_TEXT[it.level] + '</span></li>';
   }).join('');
 
-  const danger = [...state.picked].some((k) => (itemOf(k) || {}).level === 'danger');
-  const warnBox = $('dlg-warn');
-  warnBox.hidden = !danger;
-  warnBox.textContent = '其中包含不可恢复的数据（知识库、记忆或程序文件），确认后无法撤销。';
+  const danger = picked.some((k) => (itemOf(k) || {}).level === 'danger');
+  $('picked-warn').hidden = !danger;
+  $('picked-warn').textContent = '其中包含不可恢复的数据（知识库、记忆或程序文件），确认后无法撤销。';
 
-  $('dlg-input').hidden = false;
   $('phrase').value = '';
-  $('confirm').disabled = true;
-  $('confirm').textContent = '确认删除';
-  $('back').disabled = false;
-  $('mask').hidden = false;
-  $('phrase').focus();
+  $('go').disabled = true;
 }
 
-function closeDialog() {
+function human(n) {
+  if (!n) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return (i === 0 ? v.toFixed(0) : v.toFixed(1)) + ' ' + units[i];
+}
+
+// ---------------------------------------------------------------- 执行
+async function execute() {
+  if (state.busy) return;
+  state.busy = true;
   $('mask').hidden = true;
-  $('phrase').value = '';
-  $('confirm').disabled = true;
+  $('go').disabled = true;
+  $('go').textContent = '正在删除…';
+
+  const r = await api().run([...state.picked]);
+  state.busy = false;
+  $('go').textContent = '卸载';
+
+  if (r.need_stop) {
+    paintGuard(r.guard);
+    showStep(1);
+    const banner = $('banner');
+    banner.hidden = false;
+    banner.className = 'banner danger';
+    $('banner-title').textContent = '先关主程序';
+    $('banner-text').textContent = r.message || '主程序还没有完全退出，等一下再试。';
+    return;
+  }
+  if (r.message && !(r.results || []).length) {
+    alert(r.message);
+    return;
+  }
+  showResult(r);
 }
 
 function showResult(r) {
   state.result = r;
-  const bad = (r.results || []).filter((x) => !x.ok).length;
-  $('dlg-title').textContent = bad ? '部分内容没有删掉' : '清理完成';
-  $('dlg-sub').textContent = bad
-    ? '下面是逐项结果，标红的那几项可能被占用了，关掉相关程序再试一次。'
-    : '选中的内容已经删掉了，下面是逐项结果。';
-  $('dlg-list').hidden = true;
-  $('dlg-input').hidden = true;
-  $('dlg-warn').hidden = true;
+  const results = r.results || [];
+  const bad = results.filter((x) => !x.ok).length;
 
-  const list = (r.results || []).map((x) => {
+  $('done-mark').textContent = bad ? '!' : '✓';
+  $('done-mark').style.color = bad ? 'var(--danger)' : 'var(--ok)';
+  $('done-mark').style.background = bad ? 'var(--danger-bg)' : '#eaf4ef';
+  $('done-title').textContent = bad ? '有 ' + bad + ' 项没有删掉' : '清理完成';
+  $('done-sub').textContent = bad
+    ? '标红的那几项可能被占用了，主程序关掉后再进去删一次。'
+    : '选中的内容已经删掉了，下面是逐项结果。';
+
+  $('result').innerHTML = results.map((x) => {
     return '<li class="' + (x.ok ? '' : 'bad') + '">' +
       '<span class="mark">' + (x.ok ? '✓' : '×') + '</span>' +
       '<span class="mark-text">' + esc(x.title) + '<span>' + esc(x.detail) + '</span></span>' +
       '</li>';
   }).join('');
+  $('result').hidden = results.length === 0;
 
-  const sum = '共释放 <b>' + esc(r.freed_text || '0 B') + '</b>';
-  $('dlg-sub').insertAdjacentHTML(
-    'afterend',
-    '<ul class="result" id="result-list">' + list + '</ul><p class="sum" id="result-sum">' + sum + '</p>',
-  );
-
-  $('back').hidden = true;
-  $('confirm').disabled = false;
-  $('confirm').textContent = r.need_exit ? '完成并退出' : '完成';
-}
-
-function clearResult() {
-  const list = $('result-list');
-  if (list) list.remove();
-  const sum = $('result-sum');
-  if (sum) sum.remove();
-  $('dlg-list').hidden = false;
-  $('dlg-warn').hidden = false;
-  $('back').hidden = false;
-}
-
-// ---------------------------------------------------------------- 主流程
-async function execute() {
-  if (state.busy) return;
-  state.busy = true;
-  $('confirm').disabled = true;
-  $('confirm').textContent = '正在删除…';
-  $('back').disabled = true;
-
-  const r = await api().run([...state.picked]);
-  state.busy = false;
-  $('back').disabled = false;
-
-  if (r.need_stop) {
-    closeDialog();
-    paintGuard(r.guard);
-    const banner = $('banner');
-    banner.hidden = false;
-    banner.className = 'banner danger';
-    $('banner-title').textContent = '先关主程序';
-    $('banner-text').textContent = r.message || '主程序还在运行，关掉之后再删。';
-    return;
-  }
-  if (r.message && !(r.results || []).length) {
-    closeDialog();
-    alert(r.message);
-    return;
-  }
-  showResult(r);
+  $('sum').innerHTML = '共释放 <b>' + esc(r.freed_text || '0 B') + '</b>';
+  $('finish').textContent = r.need_exit ? '完成并退出' : '完成';
+  showStep(4);
 }
 
 // ---------------------------------------------------------------- 绑定
@@ -238,7 +252,7 @@ function bind() {
     if (box.checked) state.picked.add(box.value);
     else state.picked.delete(box.value);
     syncRows();
-    syncFooter();
+    syncNext();
   });
 
   $('all').addEventListener('click', () => {
@@ -246,7 +260,7 @@ function bind() {
     const allOn = keys.every((k) => state.picked.has(k));
     state.picked = new Set(allOn ? [] : keys);
     syncRows();
-    syncFooter();
+    syncNext();
   });
 
   $('kill').addEventListener('click', async () => {
@@ -259,33 +273,31 @@ function bind() {
     paintGuard(data.guard);
   });
 
-  $('go').addEventListener('click', openDialog);
+  $('next').addEventListener('click', () => goto(state.step + 1));
+  $('prev').addEventListener('click', () => goto(state.step - 1));
   $('cancel').addEventListener('click', () => api().close());
-  $('back').addEventListener('click', closeDialog);
+  $('finish').addEventListener('click', () => api().close());
 
   $('phrase').addEventListener('input', (e) => {
-    $('confirm').disabled = e.target.value.trim() !== 'DELETE';
+    $('go').disabled = e.target.value.trim() !== 'DELETE';
   });
 
-  $('confirm').addEventListener('click', () => {
-    if (state.result) {
-      if (state.result.need_exit) api().close();
-      else {
-        closeDialog();
-        clearResult();
-        boot();
-      }
-      return;
-    }
-    execute();
+  $('go').addEventListener('click', () => {
+    if (!state.picked.size) return;
+    $('mask').hidden = false;
+    $('dlg-ok').focus();
   });
+  $('dlg-back').addEventListener('click', () => {
+    $('mask').hidden = true;
+  });
+  $('dlg-ok').addEventListener('click', execute);
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('mask').hidden && !state.busy) closeDialog();
+    if (e.key === 'Escape' && !$('mask').hidden && !state.busy) $('mask').hidden = true;
   });
 }
 
-// 接口可能比脚本先就绪，也可能后到，两边都试一次，保证只启动一遍
+// 接口有时比脚本先就绪，两边都试一次，保证只启动一遍
 let started = false;
 function start() {
   if (started || !api()) return;
