@@ -30,14 +30,22 @@ function syncFromHash() {
 
 // min 是这个页面对应的最低档位，和后端 access.py 的表保持一致
 const tabs = [
-  { key: 'chat', icon: 'chat', label: '对话', min: 'guest' },
-  { key: 'tasks', icon: 'tasks', label: '任务', min: 'free' },
-  { key: 'memory', icon: 'memory', label: '记忆', min: 'free' },
-  { key: 'kb', icon: 'knowledge', label: '资料', min: 'free' },
-  { key: 'model', icon: 'settings', label: '模型', min: 'guest' },
-  { key: 'usage', icon: 'usage', label: '用量', min: 'free' },
-  { key: 'sys', icon: 'shield', label: '系统', min: 'guest' },
+  { key: 'chat', icon: 'chat', label: '对话', min: 'guest', group: '工作台' },
+  { key: 'tasks', icon: 'tasks', label: '任务', min: 'free', group: '工作台' },
+  { key: 'memory', icon: 'memory', label: '记忆', min: 'free', group: '工作台' },
+  { key: 'kb', icon: 'knowledge', label: '资料', min: 'free', group: '工作台' },
+  { key: 'model', icon: 'settings', label: '模型', min: 'guest', group: '设置' },
+  { key: 'usage', icon: 'usage', label: '用量', min: 'free', group: '设置' },
+  { key: 'sys', icon: 'shield', label: '系统', min: 'guest', group: '设置' },
 ] as const
+
+// 侧栏分两组，上面干活下面调设置，比一长串平铺清楚
+const groups = computed(() =>
+  ['工作台', '设置'].map((name) => ({
+    name,
+    items: tabs.filter((t) => t.group === name),
+  })),
+)
 
 const myRank = computed(() => RANK[(me.value?.tier || 'guest') as Tier])
 const locked = computed(() => {
@@ -100,38 +108,48 @@ onMounted(async () => {
   <div class="shell">
     <TitleBar />
 
-    <main class="shell-body">
-      <ChatView v-show="tab === 'chat'" />
-      <template v-if="tab !== 'chat'">
-        <LockCard
-          v-if="locked"
-          :title="lockMeta.title"
-          :desc="lockMeta.desc"
-          :need="lockMeta.need"
-          :points="lockPoints"
-          @go="tab = 'model'"
-        />
-        <TasksView v-else-if="tab === 'tasks'" />
-        <MemoryView v-else-if="tab === 'memory'" />
-        <KnowledgeView v-else-if="tab === 'kb'" />
-        <SettingsView v-else-if="tab === 'model'" />
-        <UsageView v-else-if="tab === 'usage'" />
-        <SystemView v-else-if="tab === 'sys'" />
-      </template>
-    </main>
+    <div class="shell-main">
+      <nav class="sidenav">
+        <template v-for="g in groups" :key="g.name">
+          <p class="nav-cap">{{ g.name }}</p>
+          <button
+            v-for="t in g.items"
+            :key="t.key"
+            class="nav-item"
+            :class="{ active: tab === t.key }"
+            @click="tab = t.key"
+          >
+            <AppIcon :name="t.icon" :size="16" />
+            <span>{{ t.label }}</span>
+            <i v-if="tabLocked(t.key)" class="nav-lock" />
+          </button>
+        </template>
 
-    <nav class="tabbar">
-      <button
-        v-for="t in tabs"
-        :key="t.key"
-        class="tab"
-        :class="{ active: tab === t.key }"
-        @click="tab = t.key"
-      >
-        <AppIcon :name="t.icon" :size="17" />
-        <span>{{ t.label }}</span>
-        <i v-if="tabLocked(t.key)" class="tab-lock" />
-      </button>
-    </nav>
+        <div class="nav-foot">
+          <span class="nav-tier" :class="`tier-${me?.tier || 'guest'}`">{{ me?.label || '加载中' }}</span>
+          <button class="nav-link" @click="tab = 'model'">授权</button>
+        </div>
+      </nav>
+
+      <main class="shell-body">
+        <ChatView v-show="tab === 'chat'" />
+        <template v-if="tab !== 'chat'">
+          <LockCard
+            v-if="locked"
+            :title="lockMeta.title"
+            :desc="lockMeta.desc"
+            :need="lockMeta.need"
+            :points="lockPoints"
+            @go="tab = 'model'"
+          />
+          <TasksView v-else-if="tab === 'tasks'" />
+          <MemoryView v-else-if="tab === 'memory'" />
+          <KnowledgeView v-else-if="tab === 'kb'" />
+          <SettingsView v-else-if="tab === 'model'" />
+          <UsageView v-else-if="tab === 'usage'" />
+          <SystemView v-else-if="tab === 'sys'" />
+        </template>
+      </main>
+    </div>
   </div>
 </template>
