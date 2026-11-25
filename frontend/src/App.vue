@@ -10,10 +10,11 @@ import MemoryView from './views/MemoryView.vue'
 import KnowledgeView from './views/KnowledgeView.vue'
 import SettingsView from './views/SettingsView.vue'
 import UsageView from './views/UsageView.vue'
+import SystemView from './views/SystemView.vue'
 import { isGuest, loadLicense, loadSessions, me } from './store'
 import type { Tier } from './api'
 
-type Tab = 'chat' | 'tasks' | 'memory' | 'kb' | 'model' | 'usage'
+type Tab = 'chat' | 'tasks' | 'memory' | 'kb' | 'model' | 'usage' | 'sys'
 
 const RANK: Record<Tier, number> = { guest: 0, free: 1, pro: 2 }
 
@@ -35,6 +36,7 @@ const tabs = [
   { key: 'kb', icon: 'knowledge', label: '资料', min: 'free' },
   { key: 'model', icon: 'settings', label: '模型', min: 'guest' },
   { key: 'usage', icon: 'usage', label: '用量', min: 'free' },
+  { key: 'sys', icon: 'shield', label: '系统', min: 'guest' },
 ] as const
 
 const myRank = computed(() => RANK[(me.value?.tier || 'guest') as Tier])
@@ -114,6 +116,7 @@ onMounted(async () => {
         <KnowledgeView v-else-if="tab === 'kb'" />
         <SettingsView v-else-if="tab === 'model'" />
         <UsageView v-else-if="tab === 'usage'" />
+        <SystemView v-else-if="tab === 'sys'" />
       </template>
     </main>
 

@@ -106,6 +106,38 @@ export interface UsageSummary {
   daily: { day: string; calls: number; total_tokens: number }[]
 }
 
+/** 系统页的版本信息，后端 /system/info 直接给 */
+export interface SystemInfo {
+  name: string
+  version: string
+  build: string
+  built_at: string
+  python: string
+  system: string
+  exe: string
+  port: number
+  data_dir: string
+  log_dir: string
+  uptime: number
+  tier: Tier
+  tier_label: string
+  perf_mode: boolean
+  max_concurrency: number
+  counts: { sessions: number; tasks: number; memories: number; chunks: number; dim: number }
+}
+
+export interface LogFile {
+  name: string
+  size: number
+  mtime: number
+}
+
+export interface AutoStart {
+  supported: boolean
+  enabled: boolean
+  command: string
+}
+
 let lastToast = 0
 /** 错误提示集中在这里弹，页面里只管切 loading，免得同一条报错连弹好几次 */
 function toast(msg: string) {
@@ -218,6 +250,25 @@ export const api = {
   resetLicense: () => req<LicenseInfo>('/license', { method: 'DELETE' }),
   setPerf: (on: boolean) =>
     req<LicenseInfo>('/license/perf', { method: 'POST', body: JSON.stringify({ on }) }),
+
+  // 系统 / 维护
+  systemInfo: () => req<SystemInfo>('/system/info', undefined, true),
+  systemLogs: () =>
+    req<{ dir: string; items: LogFile[]; total: number }>('/system/logs', undefined, true),
+  autostart: () => req<AutoStart>('/system/autostart', undefined, true),
+  setAutostart: (on: boolean) =>
+    req<AutoStart>('/system/autostart', { method: 'PUT', body: JSON.stringify({ on }) }),
+  reveal: (target: 'logs' | 'data') =>
+    req<{ ok: boolean; path: string }>('/system/reveal', {
+      method: 'POST',
+      body: JSON.stringify({ target }),
+    }),
+  clean: (what: 'sessions' | 'vector' | 'config') =>
+    req<{ ok: boolean; done: string[]; need_restart: boolean }>('/system/clean', {
+      method: 'POST',
+      body: JSON.stringify({ what }),
+    }),
+  pruneLogs: () => req<{ ok: boolean; removed: number }>('/system/logs', { method: 'DELETE' }),
 }
 
 /** 带文件头的下载交给浏览器，导出接口都在后端拼好了 Content-Disposition */

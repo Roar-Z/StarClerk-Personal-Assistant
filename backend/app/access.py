@@ -53,6 +53,7 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("*", "/api/rag", "rag"),
     ("*", "/api/stats", "usage"),
     ("*", "/api/config", "model"),
+    ("*", "/api/system", "model"),  # 版本/日志/自启属于本机维护，游客也能看
 )
 
 # 各档位的数量上限，超出就 409，别让一个免费用户塞满向量库
