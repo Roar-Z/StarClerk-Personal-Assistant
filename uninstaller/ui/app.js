@@ -145,7 +145,7 @@ function syncNext() {
   banner.className = 'banner' + (allOn || hasDanger || hasProgram ? ' danger' : '');
   $('banner-title').textContent = hasProgram ? '程序文件' : allOn ? '全部数据' : hasDanger ? '不可恢复' : '提醒';
   $('banner-text').textContent = hasProgram
-    ? '程序目录会在窗口关闭后删除，这个卸载程序也会一起消失' + (allOn ? '，勾选的数据同样会被删掉。' : '。')
+    ? '桌面和开始菜单的快捷方式会先删掉，程序目录要等窗口关闭后再删，这个卸载程序也会一起消失' + (allOn ? '，勾选的数据同样会被删掉。' : '。')
     : allOn
       ? '已选中全部本地数据，删除后无法恢复，建议先把需要的内容导出去。'
       : hasDanger

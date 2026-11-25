@@ -198,6 +198,13 @@ def _delete(key: str) -> str:
         _rm(paths.license_file())
         return "授权信息已清除，已退回游客"
     if key == "program":
+        links = [p for p in paths.shortcut_files() if p.is_file()]
+        for p in links:
+            _rm(p)
+        # 卸载器自己也在安装目录里，只能等窗口退出再删
+        _rm_later(paths.install_dir())
+        if links:
+            return f"桌面/开始菜单快捷方式（{len(links)} 个）已删除，程序目录在窗口关闭后删除"
         return "程序目录会在窗口关闭后删除"
     raise KeyError(key)
 
@@ -238,10 +245,9 @@ def run(keys: list[str]) -> dict:
         item = catalog.BY_KEY[key]
         try:
             if key == "program":
-                # 数据算完最后才交给延迟删除，自己也在那个目录里
-                _rm_later(paths.install_dir())
+                # 数据算完最后才动程序，连快捷方式一起收
                 results.append({"key": key, "title": item.title, "ok": True,
-                                "detail": "关掉窗口后自动删除"})
+                                "detail": _delete(key)})
                 continue
             if key in {"usage", "sessions", "tasks", "memory", "license"}:
                 touched_db = True

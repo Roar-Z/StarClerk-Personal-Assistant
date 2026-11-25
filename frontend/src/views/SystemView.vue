@@ -90,6 +90,17 @@ async function tidyLogs() {
 }
 
 onMounted(load)
+
+// 后端会自己退，这里只负责先把话说完
+async function uninstallApp() {
+  busy.value = 'uninstall'
+  try {
+    await api.uninstall()
+    ElMessage.success('正在打开卸载程序，本窗口马上关闭')
+  } catch {
+    busy.value = ''
+  }
+}
 </script>
 
 <template>
@@ -225,6 +236,33 @@ onMounted(load)
             </div>
             <p class="muted-line mt8">
               所有数据都在本机 data 目录，不上传；授权档位不受清理影响，想换档去「模型」页激活。
+            </p>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="card-title">卸载</span>
+            <span class="card-hint">会打开卸载向导</span>
+          </div>
+          <div class="card-body">
+            <div class="clean-row">
+              <div>
+                <p>卸载 StarClerk</p>
+                <span>先关掉本程序，再打开卸载向导自己挑要删的东西</span>
+              </div>
+              <el-popconfirm
+                title="现在退出并打开卸载向导，确定？"
+                width="230"
+                @confirm="uninstallApp"
+              >
+                <template #reference>
+                  <button class="btn-ghost" :disabled="busy === 'uninstall'">卸载</button>
+                </template>
+              </el-popconfirm>
+            </div>
+            <p class="muted-line mt8">
+              桌面和开始菜单的快捷方式会一起清掉；只删数据的话用上面的清理工具就行。
             </p>
           </div>
         </section>

@@ -282,6 +282,7 @@ export const api = {
       body: JSON.stringify({ what }),
     }),
   pruneLogs: () => req<{ ok: boolean; removed: number }>('/system/logs', { method: 'DELETE' }),
+  uninstall: () => req<{ ok: boolean; path: string }>('/system/uninstall', { method: 'POST' }),
 }
 
 /** 带文件头的下载交给浏览器，导出接口都在后端拼好了 Content-Disposition */

@@ -9,6 +9,8 @@ import os
 import sys
 from pathlib import Path
 
+APP_NAME = "StarClerk"
+
 
 def install_dir() -> Path:
     """打包后在 exe 旁边；源码跑就是项目根目录。"""
@@ -76,6 +78,17 @@ def port() -> int:
         return int(raw)
     except ValueError:
         return 8756
+
+
+def shortcut_files() -> list[Path]:
+    """安装时建的快捷方式。桌面和开始菜单都得清掉，不然留个打不开的死链。"""
+    home = Path.home()
+    appdata = Path(os.environ.get("APPDATA") or home / "AppData" / "Roaming")
+    return [
+        home / "Desktop" / f"{APP_NAME}.lnk",
+        home / "OneDrive" / "Desktop" / f"{APP_NAME}.lnk",
+        appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / f"{APP_NAME}.lnk",
+    ]
 
 
 def ui_dir() -> Path:

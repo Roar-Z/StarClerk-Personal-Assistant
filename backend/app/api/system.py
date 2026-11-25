@@ -8,7 +8,9 @@ from __future__ import annotations
 import logging
 import os
 import platform
+import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -141,6 +143,36 @@ def _reset_config() -> None:
         except OSError as e:
             raise HTTPException(500, f"删不掉 .env：{e}") from e
     db.exec_sql("DELETE FROM kv")
+
+
+# ---------------------------------------------------------------- 卸载
+def _uninstaller() -> Path | None:
+    """卸载程序跟主程序放一个目录；源码跑就找 dist 里的那份。"""
+    base = Path(sys.executable).parent if is_frozen() else Path(__file__).resolve().parents[3] / "dist"
+    exe = base / "Uninstall.exe"
+    return exe if exe.is_file() else None
+
+
+def _exit_after(delay: float = 1.2) -> None:
+    """给前端一点时间弹提示，再从进程层面退干净。"""
+    def _run() -> None:
+        from .. import launcher
+
+        launcher.quit_app()
+
+    threading.Timer(delay, _run).start()
+
+
+@router.post("/uninstall", summary="调起卸载程序并退出")
+def uninstall():
+    """先把卸载器拉起来，自己再退，不然它一启动就检测到主程序占着端口。"""
+    exe = _uninstaller()
+    if exe is None:
+        raise HTTPException(404, "没找到 Uninstall.exe，这版是绿色版，删目录就等于卸载")
+    subprocess.Popen([str(exe)], cwd=str(exe.parent), close_fds=True)
+    log.info("已打开卸载程序：%s", exe)
+    _exit_after(0.8)
+    return {"ok": True, "path": str(exe)}
 
 
 @router.post("/clean", summary="一键清理：会话 / 向量库 / 配置")

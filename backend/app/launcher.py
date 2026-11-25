@@ -99,6 +99,11 @@ def _quit() -> None:
     os._exit(0)
 
 
+def quit_app() -> None:
+    """给接口层用的退出：卸载、重启这类要连托盘一起收掉。"""
+    _quit()
+
+
 def main() -> None:
     silent = "--bg" in sys.argv[1:]
     setup_log()
