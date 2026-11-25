@@ -60,7 +60,12 @@ def schemas(use_rag: bool = True, allow_web: bool = True) -> list[dict[str, Any]
     return [_SPECS[n] for n in names]
 
 
-def execute(name: str, arguments: dict[str, Any] | str | None, doc_scope: str = "") -> dict[str, Any]:
+def execute(
+    name: str,
+    arguments: dict[str, Any] | str | None,
+    doc_scope: str = "",
+    workspace: str = "",
+) -> dict[str, Any]:
     """执行一次工具调用；任何异常都收敛成 ok=False 的观测，保证图能继续跑。"""
     args = _parse_args(arguments)
     handler = _HANDLERS.get(name)
@@ -68,6 +73,8 @@ def execute(name: str, arguments: dict[str, Any] | str | None, doc_scope: str = 
         return _fail(name, args, f"未知工具：{name}")
     if name == "rag_search":
         args.setdefault("doc_scope", doc_scope)
+        if workspace:
+            args.setdefault("workspace", workspace)
     try:
         data = handler(**args)
     except Exception as e:  # noqa: BLE001  工具失败不应中断对话
