@@ -5,9 +5,11 @@ import asyncio
 
 from fastapi import APIRouter
 
+from .. import license
 from ..db import models as meta
 from ..db import sqlite as db
 from ..llm import client
+from ..tasks.scheduler import runner
 from ..vector import lancedb_store as vs
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -19,6 +21,7 @@ async def overview():
     tasks = meta.list_tasks()
     return {
         "plan": meta.plan_info(),
+        "license": license.info(),
         "tasks": {
             "total": len(tasks),
             "enabled": sum(1 for t in tasks if t.get("enabled")),
@@ -28,6 +31,8 @@ async def overview():
         "usage_24h": meta.usage_summary(1)["totals"],
         "errors_24h": meta.count_errors(now - 86400),
         "process_usage": client.stats(),  # 本进程累计，与落库口径区分
+        "llm_gate": client.gate_stats(),  # 当前占用的模型并发（上限 2）
+        "queue": runner.status(),
     }
 
 

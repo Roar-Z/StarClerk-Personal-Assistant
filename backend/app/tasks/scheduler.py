@@ -1,47 +1,74 @@
-"""托管任务调度子线程：独立线程轮询 tasks 表 → 调 LangGraph → 落库 + 提醒。
+"""托管任务调度子线程：独立线程轮询 tasks 表 → 丢进队列 → 由小队慢慢跑。
 
 为什么用 threading.Thread 而不是 asyncio.Task：
 巡检内部是同步的 LangGraph + 可能很慢的本地模型，放在子线程里跑，
 即使某次任务卡住也不会拖住 FastAPI 的事件循环（对话/健康检查照常响应）。
-单工作线程串行执行，避免本地模型并发把内存/CPU 打满。
+
+错峰的做法有两层：
+- 扫描到一批到点任务时，按顺序给它们排队，第 n 个延后 n*stagger 秒；
+- 每次跑完写回下次时间时加一点随机抖动，几台机器/几条任务不会永远撞在一起。
+低配模式（性能模式）下把轮询间隔和任务间隔都拉长，工作线程也只留 1 个。
 """
 from __future__ import annotations
 
 import logging
+import random
 import threading
 import time
 from typing import Any
 
+from .. import license
 from ..config import settings
 from ..db import models as meta
 from ..db import sqlite as db
-from ..notify.notifier import notify
-from .patrol import execute
+from .queue import patrol_queue
+from .worker import run_task
 
 log = logging.getLogger("scheduler")
+
+__all__ = ["TaskRunner", "runner", "run_task"]
+
+
+def _scale() -> float:
+    """性能模式：所有间隔按倍数拉长，机器不忙的时候还能再开会话。"""
+    return 2.0 if license.perf_mode() else 1.0
+
+
+def effective_interval() -> int:
+    base = int(settings.scheduler_interval or 20)
+    return int(base * _scale())
+
+
+def stagger_gap() -> int:
+    """同一批到点任务的间隔，避免一起打模型。"""
+    return 20 if license.perf_mode() else 8
 
 
 class TaskRunner:
     def __init__(self, interval: int | None = None) -> None:
-        self.interval = int(interval or settings.scheduler_interval)
+        self._interval = interval
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
-        self._busy: set[str] = set()  # 本进程正在跑的任务 id
-        self._mutex = threading.Lock()
+
+    @property
+    def interval(self) -> int:
+        return int(self._interval or effective_interval())
 
     # ---------------- 生命周期 ----------------
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
         self._stop.clear()
+        patrol_queue.start(1 if license.perf_mode() else license.MAX_CONCURRENCY)
         self._thread = threading.Thread(target=self._loop, name="task-runner", daemon=True)
         self._thread.start()
-        log.info("任务调度子线程已启动（每 %ss 轮询）", self.interval)
+        log.info("任务调度子线程已启动（每 %ss 轮询，错峰 %ss）", self.interval, stagger_gap())
 
     def stop(self, timeout: float = 5) -> None:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=timeout)
+        patrol_queue.stop(timeout)
         self._thread = None
         log.info("任务调度子线程已停止")
 
@@ -61,63 +88,33 @@ class TaskRunner:
                 break
 
     def tick(self) -> list[dict[str, Any]]:
-        """扫一遍到点任务并串行执行，返回本轮结果（便于排查/测试）。"""
-        results = []
-        for task in meta.due_tasks(db.now()):
+        """扫一遍到点任务，按到期顺序排队；返回本轮排进去的任务。"""
+        now = db.now()
+        due = sorted(meta.due_tasks(now), key=lambda t: t.get("next_run_at") or 0)
+        queued: list[dict[str, Any]] = []
+        gap = stagger_gap()
+        for i, task in enumerate(due):
             if self._stop.is_set():
                 break
-            res = self._run(task)
-            if res:
-                results.append(res)
-        return results
+            # 先抢执行权（会把 next_run 推后），抢不到说明别处已经在跑
+            if not meta.claim_task(task["id"], now, _scale()):
+                continue
+            if patrol_queue.put(task, delay=i * gap):
+                queued.append(task)
+            else:
+                # 队列里已经有一条了，把时间退回去一点，别白等一个周期
+                meta.restore_next_run(task["id"], now + gap)
+        return queued
 
-    # ---------------- 单任务 ----------------
-    def _run(self, task: dict[str, Any]) -> dict[str, Any] | None:
-        tid = task["id"]
-        with self._mutex:
-            if tid in self._busy:
-                return None
-            self._busy.add(tid)
-        try:
-            # 抢占失败说明已被手动执行/其它线程领走，下个周期再说
-            if not meta.claim_task(tid, db.now()):
-                return None
-            return run_task(task)
-        finally:
-            with self._mutex:
-                self._busy.discard(tid)
-
-
-def run_task(task: dict[str, Any], notify_user: bool = True) -> dict[str, Any]:
-    """执行一次巡检：异常收敛成结果，提醒标记交给托盘/SSE。
-
-    notify_user=False 用于「用户手动点执行」——结果已在界面上显示，不再弹托盘。
-    """
-    name = task.get("name") or "巡检"
-    started = time.time()
-    try:
-        res = execute(task)
-    except Exception as e:  # noqa: BLE001
-        log.exception("任务 %s 执行失败", name)
-        meta.add_error("patrol", f"{name}: {type(e).__name__}: {e}")
-        res = {
-            "result": f"巡检失败：{str(e)[:200]}",
-            "should_notify": True,
-            "level": "warn",
-            "notice": {"title": f"巡检失败 · {name}", "body": str(e)[:180], "level": "warn"},
+    # ---------------- 状态 ----------------
+    def status(self) -> dict[str, Any]:
+        return {
+            "alive": self.alive,
+            "interval": self.interval,
+            "stagger": stagger_gap(),
+            "perf_mode": license.perf_mode(),
+            "queue": patrol_queue.status(),
         }
-    meta.finish_task(task["id"], str(res.get("result") or ""))
-    if notify_user:
-        if not res.get("ok", True):
-            # 巡检本身失败（模型/向量不可用）也要告诉用户，否则“静默成功”更糟
-            notify(f"巡检失败 · {name}", str(res.get("result") or "未知错误")[:180], "warn")
-        elif res.get("should_notify") and res.get("notice"):
-            notice = res["notice"]
-            notify(notice["title"], notice["body"], notice.get("level", "info"))
-    log.info(
-        "任务 %s 本轮结束：%.1fs，提醒=%s", name, time.time() - started, bool(res.get("should_notify"))
-    )
-    return res
 
 
 runner = TaskRunner()

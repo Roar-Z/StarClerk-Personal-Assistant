@@ -14,12 +14,14 @@ import json
 import logging
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Iterator
 
 import httpx
 
 from ..config import settings
+from ..license import MAX_CONCURRENCY
 
 log = logging.getLogger("llm")
 
@@ -58,6 +60,36 @@ _STATS: dict[str, Any] = {
 
 class LLMError(RuntimeError):
     pass
+
+
+# ---------------------------------------------------------------- 并发闸门
+# 本地机器同时打两路模型就到顶了，多出来的排队等，别把内存和显存一起打满
+_sem = threading.BoundedSemaphore(MAX_CONCURRENCY)
+_gate_lock = threading.Lock()
+_busy = 0
+_waiting = 0
+
+
+@contextmanager
+def gate() -> Iterator[None]:
+    global _busy, _waiting
+    with _gate_lock:
+        _waiting += 1
+    _sem.acquire()
+    with _gate_lock:
+        _waiting -= 1
+        _busy += 1
+    try:
+        yield
+    finally:
+        with _gate_lock:
+            _busy -= 1
+        _sem.release()
+
+
+def gate_stats() -> dict[str, int]:
+    with _gate_lock:
+        return {"limit": MAX_CONCURRENCY, "busy": _busy, "waiting": _waiting}
 
 
 @dataclass(slots=True)
@@ -182,23 +214,27 @@ def complete(
 
     started = time.perf_counter()
     fallback = False
-    try:
-        data = _post(base_url, api_key, "/chat/completions", payload, settings.llm_timeout)
-    except LLMError as e:
-        if tools and _tool_unsupported(e):
-            # 少数兼容实现不支持工具字段：去掉后重试一次，由计划节点按纯文本处理
-            log.warning("模型不支持 tool calling，降级为纯文本：%s", e)
-            payload.pop("tools", None)
-            payload.pop("tool_choice", None)
+    # 排队拿槽位；模型慢的时候这里会等一会儿，但不额外占线程
+    with gate():
+        try:
             data = _post(base_url, api_key, "/chat/completions", payload, settings.llm_timeout)
-        elif _fallback_ready():
-            log.warning("主模型失败，降级 Ollama：%s", e)
-            fallback = True
-            name, mdl = "ollama", settings.fallback_model
-            payload["model"] = mdl
-            data = _post(settings.fallback_base_url, "ollama", "/chat/completions", payload, settings.llm_timeout)
-        else:
-            raise LLMError(f"模型调用失败：{e}") from e
+        except LLMError as e:
+            if tools and _tool_unsupported(e):
+                # 少数兼容实现不支持工具字段：去掉后重试一次，由计划节点按纯文本处理
+                log.warning("模型不支持 tool calling，降级为纯文本：%s", e)
+                payload.pop("tools", None)
+                payload.pop("tool_choice", None)
+                data = _post(base_url, api_key, "/chat/completions", payload, settings.llm_timeout)
+            elif _fallback_ready():
+                log.warning("主模型失败，降级 Ollama：%s", e)
+                fallback = True
+                name, mdl = "ollama", settings.fallback_model
+                payload["model"] = mdl
+                data = _post(
+                    settings.fallback_base_url, "ollama", "/chat/completions", payload, settings.llm_timeout
+                )
+            else:
+                raise LLMError(f"模型调用失败：{e}") from e
 
     msg = (data.get("choices") or [{}])[0].get("message") or {}
     usage = _usage(data.get("usage"))
@@ -267,7 +303,8 @@ def embed(texts: list[str]) -> list[list[float]]:
         return []
     payload = {"model": settings.embed_model, "input": texts}
     try:
-        data = _post(settings.embed_base_url, settings.embed_api_key, "/embeddings", payload, 60)
+        with gate():
+            data = _post(settings.embed_base_url, settings.embed_api_key, "/embeddings", payload, 60)
     except Exception as e:  # noqa: BLE001
         raise LLMError(f"向量化失败（检查 Ollama / bge-m3 是否就绪）：{e}") from e
     return [item["embedding"] for item in data["data"]]

@@ -15,4 +15,5 @@ def execute(task: dict[str, Any]) -> dict[str, Any]:
         task.get("name") or "巡检",
         task.get("prompt") or "",
         task.get("doc_scope") or "",
+        task.get("workspace") or "",
     )
