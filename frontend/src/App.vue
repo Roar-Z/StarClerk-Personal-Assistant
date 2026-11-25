@@ -13,6 +13,9 @@ import UsageView from './views/UsageView.vue'
 import SystemView from './views/SystemView.vue'
 import NotesView from './views/NotesView.vue'
 import SkillsView from './views/SkillsView.vue'
+import TodoView from './views/TodoView.vue'
+import ScanView from './views/ScanView.vue'
+import CommandPalette from './components/CommandPalette.vue'
 import HelpView from './views/HelpView.vue'
 import MigrateView from './views/MigrateView.vue'
 import { loadLicense, loadSessions, me } from './store'
@@ -25,6 +28,8 @@ type Tab =
   | 'kb'
   | 'notes'
   | 'skills'
+  | 'todos'
+  | 'scan'
   | 'model'
   | 'usage'
   | 'help'
@@ -46,7 +51,9 @@ function syncFromHash() {
 // min 是这个页面对应的最低档位，和后端 access.py 的表保持一致
 const tabs = [
   { key: 'chat', icon: 'chat', label: '对话', min: 'guest', group: '工作台' },
+  { key: 'todos', icon: 'todo', label: '待办', min: 'free', group: '工作台' },
   { key: 'tasks', icon: 'tasks', label: '任务', min: 'free', group: '工作台' },
+  { key: 'scan', icon: 'image', label: '扫描', min: 'guest', group: '工作台' },
   { key: 'memory', icon: 'memory', label: '记忆', min: 'free', group: '工作台' },
   { key: 'kb', icon: 'knowledge', label: '资料', min: 'free', group: '工作台' },
   { key: 'notes', icon: 'note', label: '笔记', min: 'free', group: '工作台' },
@@ -99,7 +106,14 @@ function focusChat() {
 // 新手引导：第一次进来浮在右下角，点完「知道了」就不再自己弹，帮助页还能重新打开
 const guide = ref<{ key: string; title: string; body: string; page: string }[]>([])
 const guideOpen = ref(false)
-const PAGE_TAB: Record<string, Tab> = { settings: 'model', chat: 'chat', knowledge: 'kb', tasks: 'tasks', system: 'sys' }
+const PAGE_TAB: Record<string, Tab> = {
+  settings: 'model',
+  chat: 'chat',
+  knowledge: 'kb',
+  tasks: 'tasks',
+  todo: 'todos',
+  system: 'sys',
+}
 
 async function loadGuide() {
   try {
@@ -122,11 +136,35 @@ async function closeGuide() {
   }
 }
 
+// 外观设置：主题写在 html 的 data-theme 上，悬浮窗只改这一层的 class
+const floatMode = ref(false)
+type ThemeMode = 'light' | 'dark' | 'system'
+function applyTheme(mode: ThemeMode) {
+  const dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+}
+
+// 快捷键唤起的命令面板，后端只负责弹窗，动作都在前端派发
+const paletteOpen = ref(false)
+function runCommand(key: string, text?: string) {
+  if (key === 'todos') return (tab.value = 'todos')
+  if (key === 'scan') return (tab.value = 'scan')
+  if (key === 'send') tab.value = 'chat'
+  else if (key !== 'todo') tab.value = 'chat'
+  const name = key === 'todo' ? 'sc:todo-new' : key === 'send' ? 'sc:send' : `sc:${key}`
+  // 等目标页切出来再喊，不然组件还没挂上，白喊一声
+  window.setTimeout(() => window.dispatchEvent(new CustomEvent(name, text ? { detail: text } : undefined)), 40)
+}
+
 /** 托盘/快捷键唤起时后端会调它，直接跳对话页 */
 function bindEvents() {
   const es = new EventSource('/api/events')
   es.onmessage = (e) => {
     const ev = JSON.parse(e.data)
+    if (ev.type === 'command') {
+      paletteOpen.value = true
+      return
+    }
     if (ev.type !== 'notify') return
     ElNotification({
       title: ev.title,
@@ -141,7 +179,11 @@ function bindEvents() {
 
 onMounted(async () => {
   ;(window as any).__starclerkFocus = focusChat
+  ;(window as any).__starclerkCommand = () => (paletteOpen.value = true)
   window.addEventListener('hashchange', syncFromHash)
+  window.addEventListener('sc:theme', ((e: CustomEvent) => applyTheme(e.detail)) as EventListener)
+  window.addEventListener('sc:float', ((e: CustomEvent) => (floatMode.value = !!e.detail)) as EventListener)
+  applyTheme((localStorage.getItem('sc-theme') as ThemeMode) || 'light')
   window.addEventListener('sc:guide', () => {
     guideOpen.value = true
   })
@@ -153,7 +195,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ float: floatMode }">
     <TitleBar />
 
     <div class="shell-main">
@@ -190,7 +232,9 @@ onMounted(async () => {
             :points="lockPoints"
             @go="tab = 'model'"
           />
+          <TodoView v-else-if="tab === 'todos'" />
           <TasksView v-else-if="tab === 'tasks'" />
+          <ScanView v-else-if="tab === 'scan'" />
           <MemoryView v-else-if="tab === 'memory'" />
           <KnowledgeView v-else-if="tab === 'kb'" />
           <NotesView v-else-if="tab === 'notes'" />
@@ -222,5 +266,7 @@ onMounted(async () => {
       </ol>
       <button class="btn primary guide-ok" @click="closeGuide">知道了，别再弹</button>
     </div>
+
+    <CommandPalette :open="paletteOpen" @close="paletteOpen = false" @run="runCommand" />
   </div>
 </template>

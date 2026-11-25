@@ -7,6 +7,7 @@ type Bridge = {
   drag_to: (x: number, y: number, bx: number, by: number) => Promise<boolean>
   minimize: () => Promise<boolean>
   hide: () => Promise<boolean>
+  set_float: (on: boolean) => Promise<boolean>
 }
 
 function bridge(): Bridge | undefined {
@@ -21,4 +22,5 @@ export const win = {
   follow: (x: number, y: number, bx: number, by: number) => bridge()?.drag_to(x, y, bx, by),
   minimize: () => bridge()?.minimize(),
   hide: () => bridge()?.hide(),
+  setFloat: (on: boolean) => bridge()?.set_float(on),
 }

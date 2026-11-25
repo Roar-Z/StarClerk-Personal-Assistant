@@ -1,4 +1,4 @@
-"""FastAPI 应用入口：六个业务分组 + 生命周期 + 全局异常兜底 + 仅本机访问。"""
+"""FastAPI 应用入口：业务分组 + 生命周期 + 全局异常兜底 + 仅本机访问。"""
 from __future__ import annotations
 
 import asyncio
@@ -18,6 +18,7 @@ from .config import APP_VERSION, settings
 from .db.sqlite import init_db
 from .log import setup as setup_log
 from .notify import notifier
+from .tasks.reminder import reminder
 from .tasks.scheduler import runner
 
 setup_log()
@@ -31,6 +32,7 @@ async def lifespan(_: FastAPI):
     # 巡检跑在独立子线程里，不占事件循环；关闭时 join，避免半截任务
     if settings.scheduler_enabled:
         runner.start()
+    reminder.start()
     info = license.info()
     log.info(
         "StarClerk 就绪：http://%s:%s（%s，并发上限 %s）",
@@ -40,6 +42,7 @@ async def lifespan(_: FastAPI):
         info["max_concurrency"],
     )
     yield
+    reminder.stop()
     runner.stop()
     log.info("StarClerk 已停止")
 

@@ -46,6 +46,13 @@ def _push(event: dict) -> None:
             pass
 
 
+def _emit(event: dict) -> None:
+    if _loop and _loop.is_running():
+        _loop.call_soon_threadsafe(_push, event)
+    else:
+        _pending.put(event)
+
+
 def notify(title: str, body: str, level: str = "info") -> None:
     log.info("提醒：%s | %s", title, body)
     event = {"type": "notify", "level": level, "title": title, "body": body}
@@ -54,10 +61,12 @@ def notify(title: str, body: str, level: str = "info") -> None:
             _icon.notify(body[:200], title[:60])
         except Exception:  # noqa: BLE001  无托盘时忽略
             pass
-    if _loop and _loop.is_running():
-        _loop.call_soon_threadsafe(_push, event)
-    else:
-        _pending.put(event)
+    _emit(event)
+
+
+def command() -> None:
+    """快捷键按下：让前端把命令面板弹出来。"""
+    _emit({"type": "command"})
 
 
 def drain_pending() -> None:

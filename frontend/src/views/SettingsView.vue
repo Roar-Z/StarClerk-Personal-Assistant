@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../api'
 import { isGuest, loadLicense, loadSessions, me } from '../store'
+import { isDesktop, win } from '../desktop'
 
 const cfg = reactive<any>({
   llm_provider: 'deepseek',
@@ -25,6 +26,21 @@ const rebuilding = ref(false)
 const status = ref<{ ok: boolean; text: string } | null>(null)
 const loginBusy = ref(false)
 const perfBusy = ref(false)
+type ThemeMode = 'light' | 'dark' | 'system'
+const themeMode = ref<ThemeMode>((localStorage.getItem('sc-theme') as ThemeMode) || 'light')
+const floatOn = ref(false)
+
+function setTheme(mode: ThemeMode) {
+  themeMode.value = mode
+  localStorage.setItem('sc-theme', mode)
+  window.dispatchEvent(new CustomEvent('sc:theme', { detail: mode }))
+}
+async function toggleFloat(on: boolean) {
+  floatOn.value = on
+  window.dispatchEvent(new CustomEvent('sc:float', { detail: on }))
+  if (isDesktop()) await win.setFloat(on)
+  else ElMessage.info('浏览器里只切界面，窗口交给浏览器管')
+}
 
 async function doLogin() {
   loginBusy.value = true
@@ -181,6 +197,32 @@ onMounted(load)
                 size="small"
                 @change="(v) => togglePerf(Boolean(v))"
               />
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="card-title">外观与窗口</span>
+            <span class="card-hint">未登录也能设</span>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <label>主题</label>
+              <div class="seg">
+                <button class="seg-btn" :class="{ on: themeMode === 'light' }" @click="setTheme('light')">浅色</button>
+                <button class="seg-btn" :class="{ on: themeMode === 'dark' }" @click="setTheme('dark')">深色</button>
+                <button class="seg-btn" :class="{ on: themeMode === 'system' }" @click="setTheme('system')">
+                  跟随系统
+                </button>
+              </div>
+            </div>
+            <div class="lic-row">
+              <div>
+                <p>悬浮窗模式</p>
+                <span>缩成一小条贴在桌面，按 Ctrl + Alt + Space 随时唤起</span>
+              </div>
+              <el-switch v-model="floatOn" size="small" @change="toggleFloat" />
             </div>
           </div>
         </section>

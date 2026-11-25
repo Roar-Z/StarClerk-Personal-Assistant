@@ -26,6 +26,24 @@ export interface Task {
   last_run_at?: number
   next_run_at?: number
 }
+export interface Todo {
+  id: string
+  title: string
+  note: string
+  due_at: number | null
+  end_at: number | null
+  priority: 'low' | 'normal' | 'high'
+  tags: string
+  repeat: 'once' | 'daily' | 'weekly' | 'monthly'
+  lead_minutes: number
+  remind_at: number | null
+  reminded: number
+  done: number
+  done_at: number | null
+  created_at: number
+  updated_at: number
+}
+
 // 内部还是 guest/free 两个值，界面上只说未登录和已登录
 export type Tier = 'guest' | 'free'
 
@@ -316,6 +334,38 @@ export const api = {
   saveNote: (id: string, body: Partial<Note>) =>
     req<Note>(`/notes/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   delNote: (id: string) => req(`/notes/${id}`, { method: 'DELETE' }),
+
+  // 待办与日程
+  todos: (done = '0', tag = '', q = '') =>
+    req<Todo[]>(
+      `/todos?done=${done}&tag=${encodeURIComponent(tag)}&q=${encodeURIComponent(q)}`,
+    ),
+  parseTodo: (text: string) => req<Partial<Todo>>('/todos/parse', { method: 'POST', body: JSON.stringify({ text }) }),
+  addTodo: (body: Partial<Todo>) =>
+    req<{ item: Todo; conflicts: Todo[] }>('/todos', { method: 'POST', body: JSON.stringify(body) }),
+  saveTodo: (id: string, body: Partial<Todo>) =>
+    req<{ item: Todo }>(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  finishTodo: (id: string) => req<{ ok: boolean; next: Todo | null }>(`/todos/${id}/done`, { method: 'POST' }),
+  delTodo: (id: string) => req(`/todos/${id}`, { method: 'DELETE' }),
+  todoConflicts: (due_at: number, end_at: number, exclude = '') =>
+    req<{ items: Todo[] }>(
+      `/todos/conflicts?due_at=${due_at}&end_at=${end_at}&exclude=${encodeURIComponent(exclude)}`,
+    ),
+  exportTodos: (fmt: 'csv' | 'ics') => download(`/todos/export?fmt=${fmt}&done=all`),
+
+  // 本地 OCR + 采购清单
+  ocrLocal: (image: string) =>
+    req<{ text: string; lines: { text: string; score: number }[]; count: number }>('/ocr/local', {
+      method: 'POST',
+      body: JSON.stringify({ image }),
+    }),
+  ocrParse: (body: { image?: string; text?: string; kind: 'express' | 'receipt' }) =>
+    req<Record<string, any>>('/ocr/parse', { method: 'POST', body: JSON.stringify(body) }),
+  shoppingMerge: (items: { id?: string; text: string }[]) =>
+    req<{ groups: { place: string; items: { name: string; qty: number; sources: string[] }[] }[]; text: string; used: number }>(
+      '/shopping/merge',
+      { method: 'POST', body: JSON.stringify({ items }) },
+    ),
 
   // 技能模板
   skills: (category = '') =>

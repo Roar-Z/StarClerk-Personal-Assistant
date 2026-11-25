@@ -51,6 +51,26 @@ class Bridge:
         _window.hide()
         return True
 
+    def set_float(self, on: bool) -> bool:
+        """切成一小条贴在桌面最前面；不支持置顶时至少把窗口缩小。"""
+        global _window
+        if _window is None:
+            return False
+        from ..config import settings
+
+        try:
+            if on:
+                _window.resize(460, 270)
+            else:
+                _window.resize(int(settings.window_width), int(settings.window_height))
+        except Exception as e:  # noqa: BLE001
+            log.warning("窗口尺寸没改成：%s", e)
+        try:
+            _window.on_top = bool(on)
+        except Exception as e:  # noqa: BLE001
+            log.warning("窗口置顶没设上：%s", e)
+        return True
+
 
 def _center(width: int, height: int) -> tuple[int, int]:
     """居中摆放，稍微偏上一点，标题栏别顶到屏幕边。"""
@@ -62,6 +82,14 @@ def _center(width: int, height: int) -> tuple[int, int]:
         return x, y
     except Exception:  # noqa: BLE001  非 Windows 或取屏失败就退回固定位置
         return 80, 60
+
+
+def command_panel() -> None:
+    """全局快捷键：先显示窗口，再通知前端弹命令面板。"""
+    from ..notify import notifier
+
+    open_panel()
+    notifier.command()
 
 
 def open_panel() -> None:

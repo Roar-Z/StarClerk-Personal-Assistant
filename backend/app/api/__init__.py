@@ -7,6 +7,9 @@
     mindmap  /api/mindmap    思维导图
     notes    /api/notes      笔记知识库
     skills   /api/skills     技能模板
+    ocr      /api/ocr        本地识字 + 快递单/小票
+    shopping /api/shopping   采购清单合并
+    todos    /api/todos      待办与日程
     migrate  /api/migrate    数据迁移向导
     license  /api/license    本地授权 + 低配模式
     stats    /api/stats      用量与异常
@@ -23,9 +26,12 @@ from . import (
     migrate,
     mindmap,
     notes,
+    ocr,
     rag,
+    shopping,
     skills,
     stats,
+    todos,
     system,
     task,
 )
@@ -38,6 +44,9 @@ routers = (
     mindmap.router,
     notes.router,
     skills.router,
+    ocr.router,
+    shopping.router,
+    todos.router,
     migrate.router,
     license.router,
     stats.router,
@@ -53,10 +62,13 @@ __all__ = [
     "migrate",
     "mindmap",
     "notes",
+    "ocr",
     "rag",
     "routers",
+    "shopping",
     "skills",
     "stats",
     "system",
     "task",
+    "todos",
 ]

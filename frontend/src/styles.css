@@ -36,6 +36,40 @@
   --el-font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', system-ui, sans-serif;
 }
 
+/* 深色主题：只换令牌，组件那边不用跟着改 */
+:root[data-theme='dark'] {
+  --sc-bg: #10141b;
+  --sc-sidebar: #151a23;
+  --sc-surface: #1b212b;
+  --sc-line: #2b3340;
+  --sc-line-strong: #3a4453;
+  --sc-text: #e8ecf3;
+  --sc-text-2: #b6bfcd;
+  --sc-muted: #8892a3;
+  --sc-accent: #8098ff;
+  --sc-danger: #e07b72;
+  --sc-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.24);
+
+  --el-color-primary: #dfe5f0;
+  --el-color-primary-light-3: #aab4c6;
+  --el-color-primary-light-5: #7d889c;
+  --el-color-primary-light-7: #4e5869;
+  --el-color-primary-light-8: #3a4352;
+  --el-color-primary-light-9: #2a323f;
+  --el-color-danger: #e07b72;
+  --el-text-color-primary: #e8ecf3;
+  --el-text-color-regular: #b6bfcd;
+  --el-text-color-secondary: #8892a3;
+  --el-text-color-placeholder: #707b8c;
+  --el-border-color: #2b3340;
+  --el-border-color-light: #252c37;
+  --el-border-color-lighter: #202631;
+  --el-fill-color-blank: #1b212b;
+  --el-bg-color: #1b212b;
+  --el-bg-color-overlay: #1b212b;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -64,6 +98,18 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: var(--sc-bg);
+}
+/* 悬浮窗模式：窗口缩成一小条，只留对话，其余收起来 */
+.shell.float .sidenav,
+.shell.float .titlebar,
+.shell.float .page-head,
+.shell.float .guide {
+  display: none;
+}
+.shell.float .page-body,
+.shell.float .composer-wrap {
+  padding-left: 10px;
+  padding-right: 10px;
 }
 .shell-body {
   flex: 1;

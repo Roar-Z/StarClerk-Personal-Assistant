@@ -151,29 +151,62 @@ async function send(text?: string) {
   }
 }
 
-/** 语音输入：WebView2 里能用 Web Speech，不能用就直说 */
+/** 连续语音：识别到一句就自动问一句，没说完的字先摆在输入框里 */
+let rec: any = null
+function stopMic() {
+  listening.value = false
+  try {
+    rec?.stop()
+  } catch {
+    /* 停不掉就算了，别把界面卡住 */
+  }
+  rec = null
+}
 function mic() {
+  if (listening.value) {
+    stopMic()
+    ElMessage.info('语音输入停了')
+    return
+  }
   const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
   if (!Ctor) {
     ElMessage.warning('当前内核没有语音识别，打字吧')
     return
   }
   const r = new Ctor()
+  rec = r
   r.lang = 'zh-CN'
+  r.continuous = true
   r.interimResults = true
-  r.continuous = false
+  let final = ''
   r.onresult = (e: any) => {
-    let text = ''
+    let interim = ''
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      text += e.results[i][0].transcript
+      const one = e.results[i]
+      if (one.isFinal) final += one[0].transcript
+      else interim += one[0].transcript
     }
-    input.value = (input.value + text).trim()
+    if (final.trim()) {
+      const text = final.trim()
+      final = ''
+      input.value = ''
+      send(text)
+    }
+    input.value = interim.trim()
     autoGrow()
   }
-  r.onend = () => (listening.value = false)
   r.onerror = () => {
-    listening.value = false
+    stopMic()
     ElMessage.warning('没听清，或者系统没开麦克风权限')
+  }
+  r.onend = () => {
+    if (listening.value && rec === r) {
+      try {
+        r.start()
+      } catch {
+        stopMic()
+      }
+    }
   }
   listening.value = true
   r.start()
@@ -210,10 +243,10 @@ function pickImage(e: Event) {
   reader.onload = async () => {
     ocrBusy.value = true
     try {
-      const r = await api.ocr(String(reader.result))
+      const r = await api.ocrLocal(String(reader.result))
       input.value = (input.value ? input.value + '\n' : '') + r.text
       autoGrow()
-      ElMessage.success('图里的字放进输入框了')
+      ElMessage.success(r.count ? '图里的字放进输入框了（本地识别）' : '图上没认出字')
     } finally {
       ocrBusy.value = false
     }
@@ -299,15 +332,39 @@ function onFocusEvent() {
   focusInput()
 }
 
+function onSendEvent(e: Event) {
+  const text = (e as CustomEvent).detail as string
+  if (text) send(text)
+}
+function onMicEvent() {
+  mic()
+  focusInput()
+}
+function onOcrEvent() {
+  imgEl.value?.click()
+}
+function onMindmapEvent() {
+  makeMindMap()
+}
+
 watch(activeId, (id) => loadMessages(id), { immediate: true })
 onMounted(() => {
   window.addEventListener('sc:focus', onFocusEvent)
   window.addEventListener('sc:use-skill', onUseSkill)
+  window.addEventListener('sc:send', onSendEvent)
+  window.addEventListener('sc:mic', onMicEvent)
+  window.addEventListener('sc:ocr', onOcrEvent)
+  window.addEventListener('sc:mindmap', onMindmapEvent)
   if (!activeId.value) setTimeout(focusInput, 300)
 })
 onUnmounted(() => {
   window.removeEventListener('sc:focus', onFocusEvent)
   window.removeEventListener('sc:use-skill', onUseSkill)
+  window.removeEventListener('sc:send', onSendEvent)
+  window.removeEventListener('sc:mic', onMicEvent)
+  window.removeEventListener('sc:ocr', onOcrEvent)
+  window.removeEventListener('sc:mindmap', onMindmapEvent)
+  if (listening.value) stopMic()
   if (talking.value) window.speechSynthesis.cancel()
 })
 </script>

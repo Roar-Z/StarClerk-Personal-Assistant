@@ -37,6 +37,15 @@ for pkg in ("lancedb", "lance"):
     except Exception:
         pass
 
+# 本地 OCR 的模型文件在 rapidocr_onnxruntime 包里，漏收了打包后会认不出字
+for pkg in ("rapidocr_onnxruntime", "onnxruntime", "cv2"):
+    try:
+        datas += collect_data_files(pkg)
+        binaries += collect_dynamic_libs(pkg)
+        hidden += collect_submodules(pkg)
+    except Exception:
+        pass
+
 a = Analysis(
     [str(ROOT / "backend" / "run.py")],
     pathex=[str(ROOT / "backend")],

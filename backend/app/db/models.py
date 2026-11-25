@@ -409,6 +409,10 @@ def count_notes() -> int:
     return int((db.row("SELECT COUNT(*) n FROM notes") or {}).get("n") or 0)
 
 
+def count_todos() -> int:
+    return int((db.row("SELECT COUNT(*) n FROM todos") or {}).get("n") or 0)
+
+
 # ---------------- 技能模板 ----------------
 BUILTIN_SKILLS: tuple[tuple[str, str, str], ...] = (
     (

@@ -36,6 +36,9 @@ FEATURES: dict[str, str] = {
     "log_export": "free",  # 巡检日志导出
     "migrate": "free",  # 数据迁移
     "usage_detail": "free",  # 按会话/任务拆用量、告警
+    "ocr": "guest",  # 本地 OCR 不花模型钱，未登录也能用
+    "shopping": "free",  # 采购清单合并
+    "todo": "free",  # 待办与日程
 }
 
 # (方法, 路径前缀, 功能)；从上往下匹配，命中第一条就停
@@ -49,6 +52,9 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("GET", "/api/chat/sessions/", "chat"),  # 单个会话的消息，未登录也能读内存里的
     ("*", "/api/chat/sessions", "session"),
     ("*", "/api/chat", "chat"),
+    ("*", "/api/ocr", "ocr"),
+    ("*", "/api/shopping", "shopping"),
+    ("*", "/api/todos", "todo"),
     ("*", "/api/mindmap", "mindmap"),
     ("GET", "/api/tasks/logs/export", "log_export"),
     ("*", "/api/tasks/logs", "tasks"),
@@ -79,8 +85,8 @@ RULES: tuple[tuple[str, str, str], ...] = (
 
 # 各档位的数量上限，超出就 409，别让一个免费用户塞满向量库
 LIMITS: dict[str, dict[str, int]] = {
-    "guest": {"tasks": 0, "docs": 0, "memories": 0, "notes": 0},
-    "free": {"tasks": 20, "docs": 500, "memories": 2000, "notes": 500},
+    "guest": {"tasks": 0, "docs": 0, "memories": 0, "notes": 0, "todos": 0},
+    "free": {"tasks": 5, "docs": 500, "memories": 2000, "notes": 500, "todos": 500},
 }
 
 

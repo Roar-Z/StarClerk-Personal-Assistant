@@ -123,7 +123,7 @@ def main() -> None:
 
     if settings.tray_enabled:
         tray.start(on_open=window.open_panel, on_quit=_quit)
-    hotkey.start(settings.hotkey, window.open_panel)
+    hotkey.start(settings.hotkey, window.command_panel)
 
     wd = watchdog.Watchdog(_url("/api/health"), _restart_backend)
     _state["watchdog"] = wd

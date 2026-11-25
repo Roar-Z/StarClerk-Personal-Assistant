@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from .. import license, quota, sessions
+from .. import license, quota, sessions, ocr
 from ..access import require
 from ..agent import graph
 from ..db import models
@@ -192,42 +192,21 @@ def chat_stream(body: ChatIn):
     )
 
 
-@router.post("/ocr", summary="图片转文字（走多模态模型）")
+@router.post("/ocr", summary="图片转文字（本地 OCR）")
 def ocr_image(body: OcrIn):
-    """图省事不接本地 OCR 引擎，直接丢给能看图的模型；模型不支持会回一句人话。"""
+    """兼容老前端；实际识别走 /api/ocr/local，不联网也不占模型额度。"""
     img = body.image.strip()
     if not img.startswith("data:image/"):
         raise HTTPException(400, "图片格式不对，要 data:image/... 开头的 base64")
     if len(img) > 8 * 1024 * 1024:
         raise HTTPException(400, "图片太大了，压缩一下再传")
-    # 认字也是一次模型调用，未登录照样占额度，不然就成免费 OCR 了
-    guest = license.is_guest()
-    if guest:
-        quota.check()
-    msgs = [
-        {
-            "role": "system",
-            "content": "你是 OCR。把图片里的文字照原样抄下来，保留换行和表格的行列关系，"
-            "不要翻译、不要总结、不要写“图片内容如下”这类话。没有文字就回“没识别到文字”。",
-        },
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": body.hint or "识别这张图里的文字"},
-                {"type": "image_url", "image_url": {"url": img}},
-            ],
-        },
-    ]
     try:
-        r = llm.complete(msgs, temperature=0, scope="ocr")
+        hit = ocr.recognize(img)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     except Exception as e:  # noqa: BLE001
-        msg = str(e)
-        if "400" in msg or "image" in msg.lower() or "support" in msg.lower():
-            raise HTTPException(400, "当前模型看不了图，到「模型」页换一个支持图片的模型") from e
-        raise failure("ocr", e) from e
-    if guest:
-        quota.hit()
-    return {"text": r.content, "model": r.model, "provider": r.provider}
+        raise HTTPException(500, f"本地 OCR 没跑起来：{e}") from e
+    return {"text": hit["text"], "model": "rapidocr-local", "provider": "local"}
 
 
 # ---------------- 会话 ----------------

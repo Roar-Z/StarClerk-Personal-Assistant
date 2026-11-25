@@ -60,6 +60,14 @@ CREATE TABLE IF NOT EXISTS skills(
   id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT '通用',
   body TEXT NOT NULL DEFAULT '', builtin INTEGER NOT NULL DEFAULT 0,
   use_count INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL, updated_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS todos(
+  id TEXT PRIMARY KEY, title TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
+  due_at REAL, end_at REAL, priority TEXT NOT NULL DEFAULT 'normal',
+  tags TEXT NOT NULL DEFAULT '', repeat TEXT NOT NULL DEFAULT 'once',
+  lead_minutes INTEGER NOT NULL DEFAULT 0, remind_at REAL,
+  reminded INTEGER NOT NULL DEFAULT 0, done INTEGER NOT NULL DEFAULT 0, done_at REAL,
+  created_at REAL NOT NULL, updated_at REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_todos_due ON todos(due_at);
 """
 
 
