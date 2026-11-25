@@ -1,6 +1,7 @@
-"""悬浮面板：pywebview 无边框小窗，拖动/最小化/关闭都由页面右上角的按钮触发。
+"""主窗口：pywebview 无边框桌面窗口，拖动/最小化/关闭都由页面右上角按钮触发。
 
-关闭只隐藏，进程留给托盘；WebView2 缺失时退化为默认浏览器打开。
+默认居中显示，左侧导航右侧内容；关闭只隐藏，进程留给托盘。
+WebView2 缺失时退化为默认浏览器打开。
 """
 from __future__ import annotations
 
@@ -51,12 +52,14 @@ class Bridge:
         return True
 
 
-def _corner(width: int, height: int) -> tuple[int, int]:
-    """默认贴右下角，离任务栏留一点距离，像常规悬浮面板。"""
+def _center(width: int, height: int) -> tuple[int, int]:
+    """居中摆放，稍微偏上一点，标题栏别顶到屏幕边。"""
     try:
         user32 = ctypes.windll.user32
         sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
-        return max(0, sw - width - 28), max(0, sh - height - 72)
+        x = max(0, (sw - width) // 2)
+        y = max(0, (sh - height) // 2 - 30)
+        return x, y
     except Exception:  # noqa: BLE001  非 Windows 或取屏失败就退回固定位置
         return 80, 60
 
@@ -86,16 +89,16 @@ def run_window() -> None:
     from ..config import settings
 
     w, h = settings.window_width, settings.window_height
-    x, y = _corner(w, h)
+    x, y = _center(w, h)
     _window = webview.create_window(
         "StarClerk",
         _url(),
         width=w,
         height=h,
-        min_size=(380, 560),
+        min_size=(980, 640),
         x=x,
         y=y,
-        frameless=True,       # 自绘标题栏，页面才能做出干净的窄面板
+        frameless=True,       # 自绘标题栏，跟页面风格统一
         easy_drag=False,
         on_top=False,
         background_color="#F7F8FA",
