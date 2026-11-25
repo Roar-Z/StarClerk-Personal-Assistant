@@ -81,22 +81,37 @@ def run_chat(
     use_rag: bool = True,
     doc_scope: str = "",
     save: bool = True,
+    hist: list[dict[str, str]] | None = None,
+    workspace: str = "",
 ) -> dict[str, Any]:
-    """同步执行一次问答；会话读写与记忆沉淀都在这里，API 层保持很薄。"""
+    """同步执行一次问答；会话读写与记忆沉淀都在这里，API 层保持很薄。
+
+    游客模式传 save=False + hist（API 层从内存里取上一轮），
+    顺便把 RAG 和长期记忆都关掉——这是三档权限里游客的边界。
+    """
+    from .. import license
+
+    guest = license.is_guest()
     if save:
         meta.add_message(session_id, "user", query)
-    hist = meta.history(session_id, 10) if save else []
+    history = hist if hist is not None else (meta.history(session_id, 10) if save else [])
+    if save and history and history[-1].get("content") == query:
+        history = history[:-1]  # 刚写进去的这条别重复喂给模型
+    allow_memory = not guest
+    use_rag = bool(use_rag) and not guest
 
     state = _invoke(
         {
             "query": query,
             "mode": "chat",
-            "history": hist[:-1] if save else [],
+            "history": history[-10:],
             "use_rag": use_rag,
+            "allow_memory": allow_memory,
             "allow_web": settings.web_search_enabled,
             "doc_scope": doc_scope,
+            "workspace": workspace,
             "max_steps": settings.agent_max_steps,
-            "persist_memory": save,
+            "persist_memory": save and allow_memory,
         }
     )
     answer = state.get("answer") or "（没有生成回复）"
@@ -106,9 +121,9 @@ def run_chat(
 
     if save:
         meta.add_message(session_id, "assistant", answer)
-        if len(hist) <= 1:
+        if len(history) <= 1:
             meta.rename_session(session_id, query)
-        if not state.get("error"):
+        if allow_memory:
             threading.Thread(
                 target=memory.extract_and_store, args=(query, answer), daemon=True
             ).start()
@@ -128,7 +143,7 @@ def run_chat(
 
 
 # ---------------------------------------------------------------- 巡检
-def run_patrol(name: str, prompt: str, doc_scope: str = "") -> dict[str, Any]:
+def run_patrol(name: str, prompt: str, doc_scope: str = "", workspace: str = "") -> dict[str, Any]:
     """定时巡检：不落会话、不写记忆，只回结论 + 提醒信号（托盘/SSE 消费）。"""
     state = _invoke(
         {
@@ -136,8 +151,10 @@ def run_patrol(name: str, prompt: str, doc_scope: str = "") -> dict[str, Any]:
             "mode": "patrol",
             "history": [],
             "use_rag": True,
+            "allow_memory": False,  # 巡检只要资料，不用带个人记忆
             "allow_web": settings.patrol_allow_web,
             "doc_scope": doc_scope,
+            "workspace": workspace,
             "max_steps": 2,
             "persist_memory": False,
         }

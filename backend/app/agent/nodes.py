@@ -20,6 +20,8 @@ log = logging.getLogger("agent")
 # ---------------------------------------------------------------- 记忆召回
 def node_recall(state: AgentState) -> AgentState:
     """每轮思考前都查一次 LanceDB：迭代时用「问题 + 上一条观测」做查询，能带回新线索。"""
+    if not state.get("allow_memory", True):
+        return {"memories": [], "recalled_for": ""}
     query = _focus_query(state)
     try:
         found = mem_store.recall(query, settings.agent_memory_top_k)
@@ -97,7 +99,12 @@ def node_act(state: AgentState) -> AgentState:
     contexts = list(state.get("contexts") or [])
     steps = []
     for call in calls[:1]:
-        result = registry.execute(call["name"], call.get("arguments"), state.get("doc_scope", ""))
+        result = registry.execute(
+            call["name"],
+            call.get("arguments"),
+            state.get("doc_scope", ""),
+            state.get("workspace", ""),
+        )
         observations.append(
             {
                 "tool": result["tool"],

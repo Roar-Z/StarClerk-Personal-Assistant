@@ -35,7 +35,9 @@ class AgentState(TypedDict, total=False):
     history: list[dict[str, str]]
     use_rag: bool
     allow_web: bool
+    allow_memory: bool  # 游客没有长期记忆，召回节点直接跳过
     doc_scope: str
+    workspace: str
     max_steps: int
     persist_memory: bool
 
