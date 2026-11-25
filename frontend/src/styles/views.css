@@ -1,4 +1,29 @@
-/* 知识库 / 巡检 / 设置 共用 */
+/* 各页面共用的小东西，页面里的特殊块也放这儿，省得每个文件一套 */
+
+.empty {
+  margin: 0;
+  padding: 14px 2px;
+  font-size: 12px;
+  color: var(--sc-muted);
+  text-align: center;
+}
+.empty-card {
+  padding: 26px 18px;
+  text-align: center;
+  border-style: dashed;
+}
+.empty-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mb10 {
+  margin-bottom: 10px;
+}
+.mb12 {
+  margin-bottom: 12px;
+}
 .mt8 {
   margin-top: 8px;
 }
@@ -8,208 +33,107 @@
 .mt16 {
   margin-top: 16px;
 }
-.mb10 {
-  margin-bottom: 10px;
-}
-.mb12 {
-  margin-bottom: 12px;
-}
+
 .field-label {
   display: block;
-  font-size: 12px;
+  margin-bottom: 5px;
+  font-size: 11.5px;
   color: var(--sc-text-2);
-  margin-bottom: 6px;
 }
 
-/* ---------- 知识库 ---------- */
-.card.fill {
-  display: flex;
-  flex-direction: column;
-}
-.card.fill > .card-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.card.fill .drop {
-  flex: 1;
-  justify-content: center;
-}
-.drop {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 26px 16px;
-  background: #fcfcfd;
-  border: 1px dashed var(--sc-line-strong);
-  border-radius: 10px;
-  color: var(--sc-text-2);
+.result-text {
+  max-height: 46vh;
+  overflow-y: auto;
   font-size: 12.5px;
-  cursor: pointer;
-  transition: border-color 0.14s ease, background 0.14s ease;
-}
-.drop:hover {
-  border-color: #c3cbd9;
-  background: #f8fafc;
-}
-.drop em {
-  font-style: normal;
-  font-size: 11px;
-  color: var(--sc-muted);
-}
-.card-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
-}
-.mem-body {
-  padding: 4px 18px;
-}
-.mem {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--sc-line);
-}
-.mem:last-child {
-  border-bottom: 0;
-}
-.mem-text {
-  flex: 1;
-  font-size: 12.5px;
-  line-height: 1.7;
-  color: var(--sc-text-2);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
   user-select: text;
 }
-.mem-del {
-  border: 0;
-  background: transparent;
-  color: #c0c6d1;
-  cursor: pointer;
-  padding: 2px;
-  opacity: 0;
-  transition: opacity 0.14s ease, color 0.14s ease;
-}
-.mem:hover .mem-del {
-  opacity: 1;
-}
-.mem-del:hover {
-  color: var(--sc-danger);
-}
 
-/* ---------- 巡检 ---------- */
-.task-head,
-.task-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px 148px 64px 112px;
+/* ---------- 任务 ---------- */
+.task-card {
+  padding: 12px 14px;
+  transition: border-color 0.14s ease;
+}
+.task-card:hover {
+  border-color: var(--sc-line-strong);
+}
+.task-card.off {
+  opacity: 0.56;
+}
+.task-top {
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 18px;
-}
-.task-head {
-  height: 38px;
-  font-size: 11px;
-  color: var(--sc-muted);
-  border-bottom: 1px solid var(--sc-line);
-  background: #fcfcfd;
-  border-radius: var(--sc-radius) var(--sc-radius) 0 0;
-}
-.task-row {
-  padding-top: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--sc-line);
-  transition: background 0.12s ease;
-}
-.task-row:last-child {
-  border-bottom: 0;
-}
-.task-row:hover {
-  background: #fcfcfd;
-}
-.task-row.off {
-  opacity: 0.68;
-}
-.task-main {
-  min-width: 0;
+  gap: 8px;
 }
 .task-name {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--sc-text);
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: 1px solid var(--sc-line);
+  border-radius: 5px;
+  font-size: 10.5px;
+  line-height: 17px;
+  color: var(--sc-muted);
 }
 .task-prompt {
-  margin-top: 2px;
+  margin: 6px 0 8px;
   font-size: 12px;
-  color: var(--sc-muted);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.task-cell {
-  font-size: 12.5px;
+  line-height: 1.7;
   color: var(--sc-text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.task-cell.num {
-  font-variant-numeric: tabular-nums;
+.task-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.task-time {
+  font-size: 11px;
   color: var(--sc-muted);
+  font-variant-numeric: tabular-nums;
 }
 .task-ops {
   display: flex;
-  gap: 12px;
-}
-.task-ops .el-button {
-  color: var(--sc-muted);
-  font-size: 12px;
-}
-.task-ops .el-button:hover {
-  color: var(--sc-text);
-}
-.task-empty {
-  padding: 56px 18px;
-  text-align: center;
-}
-.task-empty p {
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.task-empty span {
-  font-size: 12px;
-  color: var(--sc-muted);
-  line-height: 1.7;
-}
-.result-text {
-  font-size: 13px;
-  line-height: 1.8;
-  white-space: pre-wrap;
-  user-select: text;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
-/* ---------- 设置 ---------- */
-.form-actions {
+/* ---------- 表单 ---------- */
+.form-foot {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 6px;
-  padding-left: 88px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--sc-line);
+  flex-wrap: wrap;
 }
-.form-actions .el-button {
+.form-foot .el-button.is-link {
   color: var(--sc-text-2);
-  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .status {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
-  color: #3f7d5d;
-  min-width: 0;
+  font-size: 11.5px;
+  color: var(--sc-text-2);
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -218,11 +142,8 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #4c9a72;
+  background: #3f8f5f;
   flex-shrink: 0;
-}
-.status.bad {
-  color: var(--sc-danger);
 }
 .status.bad i {
   background: var(--sc-danger);
@@ -230,7 +151,247 @@
 .switch-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   font-size: 12px;
   color: var(--sc-muted);
+}
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* ---------- 资料库 ---------- */
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 22px 16px;
+  border-style: dashed;
+  background: var(--sc-surface);
+  color: var(--sc-text-2);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.drop:hover {
+  border-color: #c9d0dc;
+  background: #fcfdff;
+}
+.drop span {
+  font-size: 12.5px;
+}
+.drop em {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--sc-muted);
+}
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+}
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 4px;
+  border-bottom: 1px solid #f4f5f8;
+}
+.doc-row:last-child {
+  border-bottom: 0;
+}
+.doc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.doc-name {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doc-meta {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--sc-muted);
+}
+
+/* ---------- 记忆 ---------- */
+.mem-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+.mem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+}
+.mem-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid #f4f5f8;
+}
+.mem-row:last-child {
+  border-bottom: 0;
+}
+.mem-main {
+  flex: 1;
+  min-width: 0;
+}
+.mem-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  word-break: break-word;
+  user-select: text;
+}
+.mem-meta {
+  font-size: 10.5px;
+  color: var(--sc-muted);
+}
+.mem-del {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--sc-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.14s ease, color 0.14s ease;
+}
+.mem-row:hover .mem-del,
+.doc-row:hover .mem-del {
+  opacity: 1;
+}
+.mem-del:hover {
+  color: var(--sc-danger);
+  background: rgba(180, 69, 60, 0.08);
+}
+
+/* ---------- 用量 ---------- */
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--sc-line);
+  border-radius: 7px;
+  background: var(--sc-bg);
+  flex-shrink: 0;
+}
+.seg-btn {
+  height: 20px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--sc-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.seg-btn.on {
+  background: var(--sc-surface);
+  color: var(--sc-text);
+  box-shadow: var(--sc-shadow-xs);
+}
+.usage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 14px;
+}
+.usage-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.usage-name {
+  width: 96px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--sc-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.usage-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: #f1f3f7;
+  overflow: hidden;
+}
+.usage-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--sc-text);
+  opacity: 0.72;
+}
+.usage-val {
+  width: 44px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 11px;
+  color: var(--sc-muted);
+  font-variant-numeric: tabular-nums;
+}
+.daily {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 104px;
+  padding: 12px 14px 8px;
+}
+.daily-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.daily-bar {
+  width: 100%;
+  max-width: 22px;
+  border-radius: 3px 3px 0 0;
+  background: #dde1e9;
+  transition: background 0.14s ease;
+}
+.daily-col:hover .daily-bar {
+  background: var(--sc-text);
+  opacity: 0.7;
+}
+.daily-day {
+  font-size: 9.5px;
+  color: var(--sc-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.plan-name {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
 }

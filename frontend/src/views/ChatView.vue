@@ -1,20 +1,27 @@
 ﻿<script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import AppIcon from '../components/AppIcon.vue'
 import { api, type Msg } from '../api'
-import { activeId, activeSession, createSession, loadSessions } from '../store'
+import {
+  activeId,
+  activeSession,
+  createSession,
+  deleteSession,
+  fmtTime,
+  loadSessions,
+  sessions,
+} from '../store'
 
 const list = ref<Msg[]>([])
 const input = ref('')
 const useRag = ref(true)
 const loading = ref(false)
 const sources = ref<{ source: string; text: string }[]>([])
+const menu = ref(false)
 const box = ref<HTMLElement>()
 const ta = ref<HTMLTextAreaElement>()
 
 const title = computed(() => activeSession.value?.title || '新对话')
-const count = computed(() => (list.value.length ? `${list.value.length} 条消息` : '准备就绪'))
 const greeting = computed(() => {
   const h = new Date().getHours()
   return h < 6 ? '夜深了' : h < 11 ? '早上好' : h < 14 ? '中午好' : h < 19 ? '下午好' : '晚上好'
@@ -46,7 +53,7 @@ async function scroll() {
 function autoGrow() {
   if (!ta.value) return
   ta.value.style.height = 'auto'
-  ta.value.style.height = `${Math.min(ta.value.scrollHeight, 140)}px`
+  ta.value.style.height = `${Math.min(ta.value.scrollHeight, 132)}px`
 }
 function onEnter(e: KeyboardEvent) {
   if (e.isComposing) return
@@ -67,21 +74,40 @@ async function send(text?: string) {
     list.value.push({ id: `a${Date.now()}`, role: 'assistant', content: r.answer, created_at: Date.now() / 1000 })
     sources.value = r.contexts
     await loadSessions()
-  } catch (e: any) {
-    ElMessage.error(e.message || '请求失败')
+  } catch {
+    // 错误提示由 api 层统一弹，这里只把输入的内容退回去方便重发
+    input.value = content
+    list.value = list.value.filter((m) => m.role !== 'user' || m.content !== content)
   } finally {
     loading.value = false
     scroll()
   }
 }
+async function newChat() {
+  menu.value = false
+  await createSession()
+  focusInput()
+}
+async function switchTo(id: string) {
+  activeId.value = id
+  menu.value = false
+  focusInput()
+}
+async function remove(id: string) {
+  await deleteSession(id)
+  if (!sessions.value.length) menu.value = false
+}
+function focusInput() {
+  nextTick(() => ta.value?.focus())
+}
 function onFocusEvent() {
-  ta.value?.focus()
+  focusInput()
 }
 
 watch(activeId, (id) => loadMessages(id), { immediate: true })
 onMounted(() => {
   window.addEventListener('sc:focus', onFocusEvent)
-  if (!activeId.value) setTimeout(() => ta.value?.focus(), 300)
+  if (!activeId.value) setTimeout(focusInput, 300)
 })
 onUnmounted(() => window.removeEventListener('sc:focus', onFocusEvent))
 </script>
@@ -89,20 +115,53 @@ onUnmounted(() => window.removeEventListener('sc:focus', onFocusEvent))
 <template>
   <div class="page">
     <header class="page-head">
-      <div class="page-head-left">
-        <span class="page-title">{{ title }}</span>
-        <span class="page-sub">{{ count }}</span>
+      <el-popover v-model:visible="menu" trigger="click" placement="bottom-start" :width="252" :show-arrow="false">
+        <template #reference>
+          <button class="sess-trigger" title="切换会话">
+            <span class="sess-trigger-name">{{ title }}</span>
+            <AppIcon name="chevron" :size="12" />
+          </button>
+        </template>
+
+        <div class="sess-menu">
+          <button class="sess-new" @click="newChat">
+            <AppIcon name="plus" :size="13" />
+            <span>新建对话</span>
+          </button>
+          <div class="sess-items sc-scroll">
+            <div
+              v-for="s in sessions"
+              :key="s.id"
+              class="sess-item"
+              :class="{ active: s.id === activeId }"
+              @click="switchTo(s.id)"
+            >
+              <span class="sess-name">{{ s.title }}</span>
+              <span class="sess-time">{{ fmtTime(s.updated_at) }}</span>
+              <button class="sess-x" title="删除" @click.stop="remove(s.id)">
+                <AppIcon name="close" :size="11" />
+              </button>
+            </div>
+            <p v-if="!sessions.length" class="sess-none">还没有对话记录</p>
+          </div>
+        </div>
+      </el-popover>
+
+      <div class="head-ops">
+        <button class="pill" :class="{ on: useRag }" title="回答时检索本地资料" @click="useRag = !useRag">
+          本地资料
+        </button>
+        <button class="icon-btn" title="新建对话" @click="newChat">
+          <AppIcon name="plus" :size="15" />
+        </button>
       </div>
-      <button class="ghost-btn" :class="{ on: useRag }" title="开启后回答引用本地资料" @click="useRag = !useRag">
-        <span class="tick" />检索本地资料
-      </button>
     </header>
 
     <div ref="box" class="page-body sc-scroll">
       <div class="chat-inner" :class="{ centered: !list.length }">
         <div v-if="!list.length" class="intro">
           <h2>{{ greeting }}，需要我盯点什么？</h2>
-          <p>我可以检索你的本地资料、记得你说过的事，也会在后台定时巡检后主动提醒你。</p>
+          <p>可以检索本地资料、记住你说过的事，也会在后台定时巡检后主动提醒。</p>
           <div class="suggest">
             <button v-for="q in SUGGESTIONS" :key="q" class="suggest-row" @click="send(q)">
               <span>{{ q }}</span>
@@ -137,12 +196,12 @@ onUnmounted(() => window.removeEventListener('sc:focus', onFocusEvent))
           ref="ta"
           v-model="input"
           rows="1"
-          placeholder="输入问题，Enter 发送，Shift + Enter 换行"
+          placeholder="输入问题，Enter 发送"
           @input="autoGrow"
           @keydown.enter.exact.prevent="onEnter"
         />
         <div class="composer-bar">
-          <span class="composer-hint">{{ activeId ? (useRag ? '回答会引用本地资料' : '仅使用模型自身知识') : '发送后将自动创建会话' }}</span>
+          <span class="composer-hint">{{ useRag ? '回答会引用本地资料' : '仅用模型自身知识' }}</span>
           <button class="send" :disabled="!input.trim() || loading" title="发送" @click="send()">
             <AppIcon name="send" :size="15" />
           </button>

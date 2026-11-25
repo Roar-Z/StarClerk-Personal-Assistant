@@ -1,4 +1,4 @@
-/* ---------- 设计令牌：中性、低饱和、单一强调色 ---------- */
+/* 设计令牌：中性灰底 + 近黑主色，少用彩色，界面才稳 */
 :root {
   --sc-bg: #f7f8fa;
   --sc-sidebar: #f5f6f9;
@@ -14,7 +14,6 @@
   --sc-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.05);
   --sc-radius: 12px;
 
-  /* 主色用近黑，避免“蓝按钮 + 蓝链接”的廉价感 */
   --el-color-primary: #1b2230;
   --el-color-primary-light-3: #3c4553;
   --el-color-primary-light-5: #6b7484;
@@ -58,6 +57,124 @@ body {
   user-select: none;
 }
 
+/* ---------- 外壳：标题栏 + 内容 + 底部导航 ---------- */
+.shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sc-bg);
+}
+.shell-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.shell-body > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.titlebar {
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 6px 0 12px;
+  background: var(--sc-surface);
+  border-bottom: 1px solid var(--sc-line);
+  user-select: none;
+}
+.titlebar.dragging {
+  cursor: grabbing;
+}
+.titlebar .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sc-accent);
+}
+.titlebar .name {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.titlebar .tag {
+  font-size: 9.5px;
+  color: var(--sc-muted);
+  border: 1px solid var(--sc-line);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 14px;
+}
+.win-ops {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+}
+.win-btn {
+  width: 26px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sc-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.win-btn:hover {
+  background: rgba(21, 27, 38, 0.06);
+  color: var(--sc-text);
+}
+.win-btn:last-child:hover {
+  background: rgba(180, 69, 60, 0.1);
+  color: var(--sc-danger);
+}
+
+.tabbar {
+  height: 54px;
+  flex-shrink: 0;
+  display: flex;
+  background: var(--sc-surface);
+  border-top: 1px solid var(--sc-line);
+}
+.tab {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--sc-muted);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: color 0.14s ease;
+}
+.tab:hover {
+  color: var(--sc-text-2);
+}
+.tab.active {
+  color: var(--sc-text);
+}
+.tab.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--sc-text);
+}
+
 /* 细滚动条 */
 .sc-scroll {
   overflow-y: auto;
@@ -82,7 +199,7 @@ body {
   background: transparent;
 }
 
-/* ---------- 页面骨架（桌面：56px 页头 + 居中内容） ---------- */
+/* ---------- 页面骨架（窄面板优先） ---------- */
 .page {
   display: flex;
   flex-direction: column;
@@ -91,24 +208,24 @@ body {
   min-width: 0;
 }
 .page-head {
-  height: 56px;
+  height: 48px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 0 32px;
+  gap: 10px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--sc-line);
   background: var(--sc-surface);
 }
 .page-head-left {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 .page-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -116,9 +233,11 @@ body {
   text-overflow: ellipsis;
 }
 .page-sub {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--sc-muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .page-body {
   flex: 1;
@@ -126,9 +245,7 @@ body {
   overflow-y: auto;
 }
 .page-inner {
-  max-width: 940px;
-  margin: 0 auto;
-  padding: 20px 32px 40px;
+  padding: 14px 16px 24px;
 }
 
 /* ---------- 卡片与栅格 ---------- */
@@ -141,63 +258,68 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 13px 18px;
+  gap: 10px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--sc-line);
 }
 .card-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
 }
 .card-hint {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--sc-muted);
 }
 .card-body {
-  padding: 18px;
+  padding: 14px;
 }
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .stat {
   background: var(--sc-surface);
   border: 1px solid var(--sc-line);
-  border-radius: var(--sc-radius);
-  padding: 15px 18px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
 }
 .stat b {
   display: block;
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  line-height: 1.3;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .stat span {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--sc-muted);
+  white-space: nowrap;
 }
 .form-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 36px;
+  gap: 10px;
+  min-height: 34px;
 }
 .form-row > label {
-  width: 76px;
+  width: 64px;
   flex-shrink: 0;
   font-size: 12px;
   color: var(--sc-text-2);
@@ -209,7 +331,7 @@ body {
   min-width: 0;
 }
 .muted-line {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--sc-muted);
   line-height: 1.7;
 }
@@ -218,9 +340,9 @@ body {
 .btn-dark {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 13px;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
   border-radius: 8px;
   border: 1px solid var(--sc-text);
   background: var(--sc-text);
@@ -228,6 +350,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
   transition: opacity 0.14s ease;
 }
 .btn-dark:hover {
@@ -263,6 +386,7 @@ body {
 }
 .el-dialog {
   border-radius: 12px;
+  max-width: calc(100vw - 32px);
 }
 .el-dialog__header {
   padding-bottom: 12px;
@@ -276,16 +400,32 @@ body {
   background: var(--sc-text) !important;
   border-color: var(--sc-text) !important;
 }
+.el-popover.el-popper {
+  padding: 6px;
+}
 
-@media (max-width: 1040px) {
-  .grid-2,
-  .stats {
-    grid-template-columns: 1fr;
-  }
+/* 浏览器里放大窗口时，内容跟着宽松一些 */
+@media (min-width: 720px) {
   .page-head {
-    padding: 0 20px;
+    padding: 0 24px;
   }
   .page-inner {
-    padding: 16px 20px 32px;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 18px 24px 32px;
+  }
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .stats {
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    padding: 14px 16px;
+  }
+  .stat b {
+    font-size: 22px;
   }
 }

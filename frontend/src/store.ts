@@ -7,7 +7,11 @@ export const activeId = ref('')
 export const activeSession = computed(() => sessions.value.find((s) => s.id === activeId.value))
 
 export async function loadSessions() {
-  sessions.value = await api.sessions()
+  try {
+    sessions.value = await api.sessions()
+  } catch {
+    sessions.value = []  // 后端刚起或断线时先留空，避免整个面板挂掉
+  }
   if (!activeId.value && sessions.value.length) activeId.value = sessions.value[0].id
   if (activeId.value && !sessions.value.some((s) => s.id === activeId.value)) activeId.value = ''
 }

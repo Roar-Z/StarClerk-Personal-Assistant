@@ -16,6 +16,12 @@ const ICONS: Record<string, string> = {
   spark: 'M12 3.5l1.7 4.8 4.8 1.7-4.8 1.7L12 16.5l-1.7-4.8L5.5 10l4.8-1.7L12 3.5Z',
   check: 'M5 12.5 9.5 17 19 7',
   dot: 'M12 12h.01',
+  memory: 'M6 4.5h11.5v15l-5.75-3.6-5.75 3.6v-15Z',
+  usage: 'M5.5 19.5v-6M12 19.5v-11M18.5 19.5v-4',
+  chevron: 'M8 10.5 12 14.5 16 10.5',
+  minimize: 'M6 12h12',
+  close: 'M6.5 6.5l11 11M17.5 6.5l-11 11',
+  refresh: 'M19 12a7 7 0 1 1-2.2-5.1M19.5 4.5V8H16',
 }
 </script>
 
