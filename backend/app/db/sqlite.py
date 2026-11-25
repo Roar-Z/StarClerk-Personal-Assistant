@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS tasks(
   last_run_at REAL, next_run_at REAL, last_result TEXT, created_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS memories(
   id TEXT PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'fact', content TEXT NOT NULL,
-  weight REAL NOT NULL DEFAULT 1.0, created_at REAL NOT NULL, updated_at REAL NOT NULL);
+  group_name TEXT NOT NULL DEFAULT '', weight REAL NOT NULL DEFAULT 1.0,
+  created_at REAL NOT NULL, updated_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS usage(
   id TEXT PRIMARY KEY, scope TEXT NOT NULL, provider TEXT DEFAULT '', model TEXT DEFAULT '',
@@ -40,6 +41,16 @@ CREATE INDEX IF NOT EXISTS idx_usage_time ON usage(created_at);
 CREATE TABLE IF NOT EXISTS errors(
   id TEXT PRIMARY KEY, scope TEXT NOT NULL, message TEXT NOT NULL, created_at REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_errors_time ON errors(created_at);
+CREATE TABLE IF NOT EXISTS task_logs(
+  id TEXT PRIMARY KEY, task_id TEXT NOT NULL, name TEXT NOT NULL, ok INTEGER NOT NULL DEFAULT 1,
+  level TEXT NOT NULL DEFAULT 'info', result TEXT NOT NULL DEFAULT '',
+  elapsed_ms INTEGER NOT NULL DEFAULT 0, created_at REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_task_logs_time ON task_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_task_logs_task ON task_logs(task_id, created_at);
+CREATE TABLE IF NOT EXISTS license(
+  id INTEGER PRIMARY KEY CHECK (id = 1), tier TEXT NOT NULL DEFAULT 'guest',
+  code TEXT NOT NULL DEFAULT '', machine TEXT NOT NULL DEFAULT '',
+  activated_at REAL NOT NULL DEFAULT 0, updated_at REAL NOT NULL DEFAULT 0);
 """
 
 
@@ -58,6 +69,18 @@ def init_db() -> None:
     with _lock, conn() as c:
         c.executescript(SCHEMA)
         c.execute("PRAGMA journal_mode=WAL")
+        _add_columns(c)
+
+
+def _add_columns(c: sqlite3.Connection) -> None:
+    """老版本的库缺字段时补上，省得用户升级还得删数据。"""
+    for table, column, ddl in (
+        ("memories", "group_name", "TEXT NOT NULL DEFAULT ''"),
+        ("tasks", "workspace", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        have = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
+        if column not in have:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
 
 def rows(sql: str, args: tuple = ()) -> list[dict[str, Any]]:

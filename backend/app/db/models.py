@@ -1,6 +1,7 @@
 """领域模型 + 仓储函数（不用 ORM，直接 SQL，便于 PyInstaller 打包）。"""
 from __future__ import annotations
 
+import random
 from typing import Any, Literal
 
 from . import sqlite as db
@@ -20,6 +21,10 @@ def create_session(title: str = "新对话") -> dict[str, Any]:
 
 def list_sessions(limit: int = 50) -> list[dict[str, Any]]:
     return db.rows("SELECT * FROM sessions ORDER BY updated_at DESC LIMIT ?", (limit,))
+
+
+def get_session(session_id: str) -> dict[str, Any] | None:
+    return db.row("SELECT * FROM sessions WHERE id=?", (session_id,))
 
 
 def add_message(session_id: str, role: Role, content: str) -> dict[str, Any]:
@@ -50,17 +55,49 @@ def delete_session(session_id: str) -> None:
 
 
 # ---------------- 记忆元数据 ----------------
-def add_memory(content: str, kind: str = "fact", weight: float = 1.0) -> dict[str, Any]:
+def add_memory(
+    content: str, kind: str = "fact", weight: float = 1.0, group_name: str = ""
+) -> dict[str, Any]:
     mid, t = db.new_id(), db.now()
     db.exec_sql(
-        "INSERT INTO memories(id,kind,content,weight,created_at,updated_at) VALUES(?,?,?,?,?,?)",
-        (mid, kind, content, weight, t, t),
+        """INSERT INTO memories(id,kind,content,group_name,weight,created_at,updated_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (mid, kind, content, group_name, weight, t, t),
     )
-    return {"id": mid, "kind": kind, "content": content, "weight": weight}
+    return {"id": mid, "kind": kind, "content": content, "group_name": group_name, "weight": weight}
 
 
-def list_memories(limit: int = 200) -> list[dict[str, Any]]:
+def list_memories(limit: int = 200, group_name: str = "") -> list[dict[str, Any]]:
+    if group_name:
+        return db.rows(
+            "SELECT * FROM memories WHERE group_name=? ORDER BY updated_at DESC LIMIT ?",
+            (group_name, limit),
+        )
     return db.rows("SELECT * FROM memories ORDER BY updated_at DESC LIMIT ?", (limit,))
+
+
+def count_memories(group_name: str = "") -> int:
+    sql = "SELECT COUNT(*) n FROM memories"
+    args: tuple = ()
+    if group_name:
+        sql += " WHERE group_name=?"
+        args = (group_name,)
+    r = db.row(sql, args)
+    return int(r["n"]) if r else 0
+
+
+def memory_groups() -> list[dict[str, Any]]:
+    return db.rows(
+        """SELECT group_name name, COUNT(*) n FROM memories
+           GROUP BY group_name ORDER BY n DESC"""
+    )
+
+
+def set_memory_group(mid: str, group_name: str) -> None:
+    db.exec_sql(
+        "UPDATE memories SET group_name=?, updated_at=? WHERE id=?",
+        (group_name[:40], db.now(), mid),
+    )
 
 
 def delete_memory(mid: str) -> None:
@@ -74,12 +111,13 @@ def create_task(
     kind: str = "patrol",
     cron_minutes: int = 60,
     doc_scope: str = "",
+    workspace: str = "",
 ) -> dict[str, Any]:
     tid, t = db.new_id(), db.now()
     db.exec_sql(
-        """INSERT INTO tasks(id,name,kind,cron_minutes,prompt,doc_scope,enabled,next_run_at,created_at)
-           VALUES(?,?,?,?,?,?,1,?,?)""",
-        (tid, name, kind, cron_minutes, prompt, doc_scope, t + cron_minutes * 60, t),
+        """INSERT INTO tasks(id,name,kind,cron_minutes,prompt,doc_scope,workspace,enabled,next_run_at,created_at)
+           VALUES(?,?,?,?,?,?,?,1,?,?)""",
+        (tid, name, kind, cron_minutes, prompt, doc_scope, workspace, t + cron_minutes * 60, t),
     )
     return get_task(tid) or {}
 
@@ -98,14 +136,23 @@ def due_tasks(ts: float) -> list[dict[str, Any]]:
     )
 
 
-def claim_task(tid: str, ts: float) -> bool:
-    """抢占一次执行权：先把 next_run 推到下一个周期，避免 tick 重复触发/并发执行。"""
+def claim_task(tid: str, ts: float, scale: float = 1.0) -> bool:
+    """抢占一次执行权：先把 next_run 推到下一个周期，避免 tick 重复触发/并发执行。
+
+    scale 是性能模式的倍数，jitter 让几条任务的到期时间错开几十秒。
+    """
     task = get_task(tid) or {}
-    nxt = ts + max(1, int(task.get("cron_minutes") or 60)) * 60
+    gap = max(1, int(task.get("cron_minutes") or 60)) * 60 * max(0.5, float(scale))
+    nxt = ts + gap + random.uniform(0, 15)
     return db.exec_rowcount(
         "UPDATE tasks SET last_run_at=?, next_run_at=?, last_result=? WHERE id=? AND enabled=1",
         (ts, nxt, "运行中…", tid),
     ) > 0
+
+
+def restore_next_run(tid: str, ts: float) -> None:
+    """排队没排上时把时间调回来，下一轮还能再捡起来。"""
+    db.exec_sql("UPDATE tasks SET next_run_at=? WHERE id=?", (ts, tid))
 
 
 def finish_task(tid: str, result: str) -> None:
@@ -121,24 +168,93 @@ def delete_task(tid: str) -> None:
 
 
 def plan_info() -> dict[str, Any]:
-    """免费/Pro 托管任务额度：MVP 用 kv 存套餐，接口可切换，不需要重启。"""
-    from ..config import settings
+    """档位和任务额度：档位从本地授权来，额度表在 access 里。"""
+    from .. import access, license
 
-    plan = str(kv_get("plan", settings.plan)).lower()
-    limit = settings.pro_task_limit if plan == "pro" else settings.free_task_limit
+    tier = license.tier()
+    limit = access.limits_for(tier)["tasks"]
     used = len(list_tasks())
     return {
-        "plan": plan,
-        "is_pro": plan == "pro",
+        "plan": tier,
+        "tier": tier,
+        "is_pro": tier == "pro",
+        "is_guest": tier == "guest",
         "limit": limit,
         "used": used,
         "remaining": max(0, limit - used),
     }
 
 
-def set_plan(plan: str) -> dict[str, Any]:
-    kv_set("plan", "pro" if plan == "pro" else "free")
-    return plan_info()
+# ---------------- 本地授权状态 ----------------
+def license_get() -> dict[str, Any] | None:
+    return db.row("SELECT * FROM license WHERE id=1")
+
+
+def license_set(tier: str, code: str, machine: str) -> None:
+    t = db.now()
+    db.exec_sql(
+        """INSERT INTO license(id,tier,code,machine,activated_at,updated_at) VALUES(1,?,?,?,?,?)
+           ON CONFLICT(id) DO UPDATE SET tier=excluded.tier, code=excluded.code,
+           machine=excluded.machine, activated_at=excluded.activated_at, updated_at=excluded.updated_at""",
+        (tier, code, machine, t, t),
+    )
+
+
+def license_clear(machine: str = "") -> None:
+    """退回游客也要留一行，否则「库里没有」会被当成新机器去读 json 备份。"""
+    t = db.now()
+    db.exec_sql(
+        """INSERT INTO license(id,tier,code,machine,activated_at,updated_at) VALUES(1,'guest','',?,0,?)
+           ON CONFLICT(id) DO UPDATE SET tier='guest', code='', activated_at=0, updated_at=?""",
+        (machine, t, t),
+    )
+
+
+# ---------------- 巡检历史日志 ----------------
+def add_task_log(
+    task_id: str,
+    name: str,
+    ok: bool,
+    level: str,
+    result: str,
+    elapsed_ms: int = 0,
+    created_at: float | None = None,
+) -> dict[str, Any]:
+    lid, t = db.new_id(), created_at or db.now()
+    db.exec_sql(
+        """INSERT INTO task_logs(id,task_id,name,ok,level,result,elapsed_ms,created_at)
+           VALUES(?,?,?,?,?,?,?,?)""",
+        (lid, task_id, name[:60], 1 if ok else 0, level, result[:4000], int(elapsed_ms), t),
+    )
+    return {"id": lid, "task_id": task_id, "name": name, "ok": bool(ok), "level": level,
+            "result": result, "elapsed_ms": int(elapsed_ms), "created_at": t}
+
+
+def list_task_logs(task_id: str = "", limit: int = 50) -> list[dict[str, Any]]:
+    if task_id:
+        return db.rows(
+            "SELECT * FROM task_logs WHERE task_id=? ORDER BY created_at DESC LIMIT ?",
+            (task_id, limit),
+        )
+    return db.rows("SELECT * FROM task_logs ORDER BY created_at DESC LIMIT ?", (limit,))
+
+
+def count_task_logs(task_id: str = "") -> int:
+    sql = "SELECT COUNT(*) n FROM task_logs"
+    args: tuple = ()
+    if task_id:
+        sql += " WHERE task_id=?"
+        args = (task_id,)
+    r = db.row(sql, args)
+    return int(r["n"]) if r else 0
+
+
+def prune_task_logs(keep: int = 2000) -> None:
+    """日志只留最近若干条，本地 SQLite 别无限长。"""
+    db.exec_sql(
+        "DELETE FROM task_logs WHERE id NOT IN (SELECT id FROM task_logs ORDER BY created_at DESC LIMIT ?)",
+        (max(100, keep),),
+    )
 
 
 # ---------------- Token 用量 ----------------
