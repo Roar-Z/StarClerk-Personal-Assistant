@@ -62,12 +62,13 @@ def parse(text: str, now: float | None = None) -> dict[str, Any]:
                     except ValueError:
                         pass
 
-    # 时段 + 几点几分
+    # 时段 + 几点几分。中文里“下午三点”是 15 点，先记时段再换算。
     hour, minute = 9, 0
     has_time = False
+    period = ""
     for word, h in _PERIOD:
         if word in rest:
-            hour, has_time = h, True
+            hour, has_time, period = h, True, word
             rest = rest.replace(word, "")
             break
     m = re.search(r"(\d{1,2})\s*[点:：时]\s*(\d{1,2})?\s*分?", rest)
@@ -90,6 +91,8 @@ def parse(text: str, now: float | None = None) -> dict[str, Any]:
             minute = 30 if tail == "半" else (int(tail) if tail.isdigit() else 0)
             has_time = True
             rest = rest[: m.start()] + rest[m.end() :]
+    if period in ("下午", "晚上", "傍晚", "夜里") and hour < 12:
+        hour += 12
     if re.search(r"半", rest) and has_time:
         minute = 30
         rest = rest.replace("半", "", 1)

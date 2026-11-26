@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any
 
 from .. import access, todos
@@ -36,12 +37,16 @@ def run(text: str, note: str = "") -> dict:
         lead_minutes=parsed["lead_minutes"],
     )
     item = result["item"]
-    when = "没定时间"
     if item.get("due_at"):
-        from datetime import datetime
-
-        when = datetime.fromtimestamp(item["due_at"]).strftime("%m-%d %H:%M")
-    summary = f"已加入待办：{item['title']}（{when}）"
+        due = datetime.fromtimestamp(item["due_at"]).strftime("%Y年%m月%d日 %H:%M:%S")
+        remind_ts = item.get("remind_at") or item["due_at"]
+        remind = datetime.fromtimestamp(remind_ts).strftime("%Y年%m月%d日 %H:%M:%S")
+        summary = (
+            f"已加入待办：{item['title']}。截止时间 {due}；"
+            f"提醒时间 {remind}（提前 {int(item.get('lead_minutes') or 0)} 分钟）。"
+        )
+    else:
+        summary = f"已加入待办：{item['title']}。没定时间，暂不提醒。"
     conflicts = result.get("conflicts") or []
     if conflicts:
         summary += "；和已有待办撞时间：" + "、".join(x["title"] for x in conflicts[:3])
