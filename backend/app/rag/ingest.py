@@ -1,6 +1,6 @@
 """本地 RAG 入库：文本切块 → 向量化 → LanceDB。
 
-MVP 只解析 .txt/.md/.csv/.log（PDF/Word 属后续增强，避免拉入重依赖）。
+支持纯文本和 PDF；PDF 有文字层直接抽，扫描页走本地 OCR。
 workspace 先落在分块上，传空就用 default。
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ from ..vector import lancedb_store as vs
 
 CHUNK = 600
 OVERLAP = 80
-SUPPORTED = {".txt", ".md", ".markdown", ".csv", ".log", ".json"}
+SUPPORTED = {".txt", ".md", ".markdown", ".csv", ".log", ".json", ".pdf"}
 
 
 def split_text(text: str) -> list[str]:
@@ -45,8 +45,20 @@ def ingest_file(
 ) -> dict[str, Any]:
     p = Path(path)
     if p.suffix.lower() not in SUPPORTED:
-        raise ValueError(f"暂不支持 {p.suffix}，可先转成 txt/md")
-    text = p.read_text(encoding="utf-8", errors="ignore")
+        raise ValueError(f"暂不支持 {p.suffix}，可用 pdf / txt / md / csv / log / json")
+
+    extra: dict[str, Any] = {}
+    if p.suffix.lower() == ".pdf":
+        try:
+            from . import pdf as pdf_parser
+        except ImportError as e:  # noqa: BLE001
+            raise ValueError("这台机器还没装 PDF 解析库 pymupdf，装一下再传") from e
+        hit = pdf_parser.extract(p)
+        text = hit["text"]
+        extra = {"pages": hit["pages"], "ocr_pages": hit["ocr_pages"]}
+    else:
+        text = p.read_text(encoding="utf-8", errors="ignore")
+
     doc_id = doc_id or f"doc-{meta.new_id()}"
     chunks = split_text(text)
     n = vs.add_document(doc_id, p.name, chunks, workspace)
@@ -57,6 +69,7 @@ def ingest_file(
         "total_chunks": len(chunks),
         "workspace": workspace or vs.DEFAULT_WS,
         "incremental": bool(incremental),
+        **extra,
     }
 
 

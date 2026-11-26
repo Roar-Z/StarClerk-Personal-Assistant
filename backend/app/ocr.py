@@ -39,16 +39,8 @@ def _bytes(image: str) -> bytes:
         raise ValueError("图片数据不是合法的 base64") from e
 
 
-def recognize(image: str) -> dict[str, Any]:
-    import cv2
-    import numpy as np
-
-    data = _bytes(image)
-    arr = np.frombuffer(data, dtype=np.uint8)
-    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError("读不出这张图，换个格式试试")
-
+def recognize_image(img: Any) -> dict[str, Any]:
+    """传 OpenCV 图进来识别，PDF 扫描页直接复用这块。"""
     result, _ = _model()(img)
     lines = []
     for item in result or []:
@@ -67,6 +59,18 @@ def recognize(image: str) -> dict[str, Any]:
         )
     lines.sort(key=lambda x: (min(p[1] for p in x["box"]), min(p[0] for p in x["box"])))
     return {"text": "\n".join(x["text"] for x in lines), "lines": lines, "count": len(lines)}
+
+
+def recognize(image: str) -> dict[str, Any]:
+    import cv2
+    import numpy as np
+
+    data = _bytes(image)
+    arr = np.frombuffer(data, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("读不出这张图，换个格式试试")
+    return recognize_image(img)
 
 
 # ---------------------------------------------------------------- 快递单

@@ -50,7 +50,7 @@ def _guard_count(doc_id: str = "") -> None:
     access.check_limit("docs", len(docs))
 
 
-@router.post("/upload", summary="上传文件入库（txt/md/csv/log/json）")
+@router.post("/upload", summary="上传文件入库（pdf/txt/md/csv/log/json）")
 async def upload(
     file: UploadFile = File(...), workspace: str = "", doc_id: str = ""
 ):

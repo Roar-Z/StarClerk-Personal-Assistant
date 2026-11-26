@@ -37,6 +37,15 @@ for pkg in ("lancedb", "lance"):
     except Exception:
         pass
 
+# PDF 解析用的 PyMuPDF，扩展库要显式收进来，不然打包后读不了 PDF
+for pkg in ("fitz", "pymupdf"):
+    try:
+        datas += collect_data_files(pkg)
+        binaries += collect_dynamic_libs(pkg)
+        hidden += collect_submodules(pkg)
+    except Exception:
+        pass
+
 # 本地 OCR 的模型文件在 rapidocr_onnxruntime 包里，漏收了打包后会认不出字
 for pkg in ("rapidocr_onnxruntime", "onnxruntime", "cv2"):
     try:

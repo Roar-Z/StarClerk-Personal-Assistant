@@ -97,7 +97,8 @@ async function uploadFiles(e: Event) {
   try {
     for (const f of Array.from(files)) {
       const r = await api.upload(f, ws.value)
-      ElMessage.success(`${r.source} 已切 ${r.chunks} 段`)
+      if (r.pages) ElMessage.success(`${r.source} 共 ${r.pages} 页，已切 ${r.chunks} 段${r.ocr_pages ? `（${r.ocr_pages} 页走了 OCR）` : ''}`)
+      else ElMessage.success(`${r.source} 已切 ${r.chunks} 段`)
     }
     await refresh()
   } catch {
@@ -175,7 +176,7 @@ onMounted(refresh)
       >
         <el-option v-for="w in workspaces" :key="w.name" :label="`${w.name} ${w.docs}`" :value="w.name" />
       </el-select>
-      <input ref="fileInput" type="file" multiple accept=".txt,.md,.csv,.log,.json" hidden @change="uploadFiles" />
+      <input ref="fileInput" type="file" multiple accept=".pdf,.txt,.md,.csv,.log,.json" hidden @change="uploadFiles" />
       <button v-if="isLoggedIn" class="btn-ghost" :disabled="!picked.length" @click="openBatch">
         批量{{ picked.length ? `(${picked.length})` : '' }}
       </button>

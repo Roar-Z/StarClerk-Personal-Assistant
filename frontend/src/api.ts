@@ -266,7 +266,7 @@ export const api = {
   upload: (file: File, workspace = '') => {
     const fd = new FormData()
     fd.append('file', file)
-    return req<{ source: string; chunks: number; total_chunks: number }>(
+    return req<{ source: string; chunks: number; total_chunks: number; pages?: number; ocr_pages?: number }>(
       `/rag/upload?workspace=${encodeURIComponent(workspace)}`,
       { method: 'POST', body: fd },
     )
