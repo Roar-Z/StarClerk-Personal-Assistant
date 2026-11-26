@@ -164,8 +164,8 @@ onMounted(load)
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="page-inner stack">
-        <section class="card">
+      <div class="page-inner bento">
+        <section class="card col-5">
           <div class="card-head">
             <span class="card-title">本机登录</span>
             <span class="card-hint">不联网</span>
@@ -201,7 +201,7 @@ onMounted(load)
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-7">
           <div class="card-head">
             <span class="card-title">外观与窗口</span>
             <span class="card-hint">未登录也能设</span>
@@ -227,7 +227,7 @@ onMounted(load)
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-7">
           <div class="card-head">
             <span class="card-title">对话模型</span>
             <span class="card-hint">{{ isGuest ? '未登录固定' : 'OpenAI 兼容' }}</span>
@@ -298,7 +298,7 @@ onMounted(load)
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-5">
           <div class="card-head">
             <span class="card-title">本地向量</span>
             <span class="card-hint">Ollama + bge-m3</span>
@@ -346,7 +346,7 @@ onMounted(load)
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-12">
           <div class="card-head"><span class="card-title">交互</span></div>
           <div class="card-body">
             <div class="form-row">

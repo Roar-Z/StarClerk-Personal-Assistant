@@ -157,8 +157,8 @@ onUnmounted(() => window.removeEventListener('sc:todo-new', onNewShortcut))
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="todo-grid">
-        <section class="card">
+      <div class="bento">
+        <section class="card col-7">
           <div class="card-head">
             <span class="card-title">清单</span>
             <span class="card-hint">
@@ -190,7 +190,7 @@ onUnmounted(() => window.removeEventListener('sc:todo-new', onNewShortcut))
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-5">
           <div class="card-head">
             <span class="card-title">{{ editing ? '改这条' : '记一条' }}</span>
             <span class="card-hint">一句话或手动填都行</span>
@@ -265,8 +265,8 @@ onUnmounted(() => window.removeEventListener('sc:todo-new', onNewShortcut))
 
 <style scoped>
 .todos { display: flex; flex-direction: column; height: 100%; padding: 0; }
-.todo-grid { display: grid; grid-template-columns: minmax(300px, 0.9fr) minmax(360px, 1.1fr); gap: 12px; padding: 14px 16px 20px; height: 100%; }
-.todo-grid .card { min-height: 0; display: flex; flex-direction: column; }
+.bento { padding: 14px 16px 20px; height: 100%; }
+.bento > .card { min-height: 0; display: flex; flex-direction: column; }
 .list, .edit { overflow-y: auto; }
 .filter, .field input, .field textarea, .field select, .mini-select {
   width: 100%; padding: 7px 9px; font-size: 12px; color: var(--sc-text);

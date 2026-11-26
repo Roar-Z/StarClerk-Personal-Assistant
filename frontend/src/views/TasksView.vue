@@ -126,13 +126,13 @@ onMounted(refresh)
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="page-inner stack">
-        <div v-if="!tasks.length" class="card empty-card">
+      <div class="page-inner bento">
+        <div v-if="!tasks.length" class="card empty-card col-12">
           <p class="empty-title">还没有巡检任务</p>
           <p class="muted-line">建一条试试：每隔 3 小时检查本地资料里有没有风险，没有就回“无异常”。</p>
         </div>
 
-        <div v-for="t in tasks" :key="t.id" class="card task-card" :class="{ off: !t.enabled }">
+        <div v-for="t in tasks" :key="t.id" class="card task-card col-6" :class="{ off: !t.enabled }">
           <div class="task-top">
             <el-switch :model-value="!!t.enabled" size="small" @change="(v) => toggle(t, !!v)" />
             <span class="task-name">{{ t.name }}</span>

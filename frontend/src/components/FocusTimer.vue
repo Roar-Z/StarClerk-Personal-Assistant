@@ -185,7 +185,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.focus-card { grid-column: 1 / -1; }
+.focus-card { min-width: 0; }
 .focus-body { display: flex; align-items: center; gap: 28px; }
 .clock-wrap { position: relative; width: 150px; height: 150px; flex: none; }
 .ring { width: 100%; height: 100%; transform: rotate(-90deg); }

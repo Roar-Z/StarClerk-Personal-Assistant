@@ -89,12 +89,12 @@ onMounted(load)
       <span v-else class="up-idle">没找到更新的安装包，想升级就把新包放到 {{ update.folder }}</span>
     </div>
 
-    <div class="wrap">
-      <aside class="toc">
+    <div class="wrap bento">
+      <aside class="toc col-3">
         <p class="toc-cap">目录</p>
         <button v-for="t in toc" :key="t" @click="jump(t)">{{ t }}</button>
       </aside>
-      <article class="doc">
+      <article class="doc col-9">
         <template v-for="(b, i) in blocks" :key="i">
           <h2 v-if="b.kind === 'h'">{{ b.text }}</h2>
           <ol v-else-if="b.kind === 'ol'" class="num">
@@ -144,9 +144,7 @@ onMounted(load)
 .wrap {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 170px 1fr;
-  gap: 14px;
+  align-items: stretch;
   padding: 12px 0 16px;
 }
 .toc {

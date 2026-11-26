@@ -170,8 +170,8 @@ onUnmounted(() => {
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="study-grid">
-        <section class="card">
+      <div class="bento">
+        <section class="card col-7">
           <div class="card-head">
             <span class="card-title">学习通作业提醒</span>
             <span class="card-hint">{{ enabled ? '运行中' : '已关闭' }}</span>
@@ -195,7 +195,7 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-5">
           <div class="card-head">
             <span class="card-title">运行日志</span>
             <span class="card-hint">最近 {{ logs.length }} 条</span>
@@ -212,8 +212,8 @@ onUnmounted(() => {
           </div>
         </section>
 
-        <FocusTimer />
-        <ScheduleExport />
+        <FocusTimer class="col-6" />
+        <ScheduleExport class="col-6" />
       </div>
     </div>
 
@@ -235,8 +235,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.study-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
-.study-grid .card { min-width: 0; }
+.bento > .card { min-width: 0; }
 .status-line { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
 .hint { font-size: 12px; color: var(--sc-muted); line-height: 1.7; margin: 6px 0; }
 .login-row { display: flex; align-items: center; gap: 10px; margin: 14px 0; }

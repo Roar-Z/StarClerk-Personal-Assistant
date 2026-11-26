@@ -64,8 +64,8 @@ onMounted(load)
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="page-inner stack">
-        <div class="stats">
+      <div class="page-inner bento">
+        <div class="stats col-12">
           <div class="stat">
             <b>{{ fmt(totals?.total_tokens) }}</b>
             <span>总 token</span>
@@ -80,7 +80,7 @@ onMounted(load)
           </div>
         </div>
 
-        <div class="card">
+        <div class="card col-6">
           <div class="card-head">
             <span class="card-title">按场景</span>
             <span class="card-hint">输入 {{ fmt(totals?.prompt_tokens) }} / 输出 {{ fmt(totals?.completion_tokens) }}</span>
@@ -95,7 +95,7 @@ onMounted(load)
           </div>
         </div>
 
-        <div class="card">
+        <div class="card col-6">
           <div class="card-head">
             <span class="card-title">按模型</span>
           </div>
@@ -109,7 +109,7 @@ onMounted(load)
           </div>
         </div>
 
-        <div class="card">
+        <div class="card col-12">
           <div class="card-head">
             <span class="card-title">每日趋势</span>
             <span class="card-hint">近 {{ days }} 天</span>
@@ -130,7 +130,7 @@ onMounted(load)
             近 {{ detail.alert.days }} 天已经用掉 {{ fmt(detail.alert.used) }} token，超过 {{ fmt(detail.alert.limit) }} 的预警线了，留意一下费用。
           </div>
 
-          <div class="card">
+          <div class="card col-6">
             <div class="card-head">
               <span class="card-title">最费 token 的会话</span>
               <span class="card-hint">近 {{ detail.days }} 天</span>
@@ -145,7 +145,7 @@ onMounted(load)
             </div>
           </div>
 
-          <div class="card">
+          <div class="card col-6">
             <div class="card-head">
               <span class="card-title">最费 token 的巡检任务</span>
             </div>
@@ -160,7 +160,7 @@ onMounted(load)
           </div>
         </template>
 
-        <div class="card">
+        <div class="card col-12">
           <div class="card-head">
             <span class="card-title">档位</span>
             <span class="card-hint">{{ overview?.license?.label || '未登录' }}</span>

@@ -188,20 +188,20 @@ onMounted(refresh)
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="page-inner stack">
-        <div class="stats">
+      <div class="page-inner bento">
+        <div class="stats col-12">
           <div class="stat"><b>{{ stats.chunks }}</b><span>分块</span></div>
           <div class="stat"><b>{{ docs.length }}</b><span>文档</span></div>
           <div class="stat"><b>{{ stats.dim }}</b><span>向量维度</span></div>
         </div>
 
-        <button class="card drop" :disabled="busy" @click="fileInput?.click()">
+        <button class="card drop col-12" :disabled="busy" @click="fileInput?.click()">
           <AppIcon name="upload" :size="18" />
           <span>{{ busy ? '正在切块建索引…' : '点这里选文件，可以多选' }}</span>
           <em>txt / md / csv / log / json，切段后写入本地向量库</em>
         </button>
 
-        <div class="card">
+        <div class="card col-5">
           <div class="card-head">
             <span class="card-title">粘贴一段文字</span>
             <span class="card-hint">适合周报、会议记录</span>
@@ -215,7 +215,7 @@ onMounted(refresh)
           </div>
         </div>
 
-        <div class="card">
+        <div class="card col-7">
           <div class="card-head">
             <span class="card-title">已入库</span>
             <span class="card-hint">{{ docs.length }} 份</span>

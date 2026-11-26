@@ -109,8 +109,8 @@ onMounted(load)
       <button v-for="c in cats" :key="c" :class="{ on: cat === c }" @click="cat = c">{{ c }}</button>
     </div>
 
-    <div class="grid">
-      <article v-for="s in shown" :key="s.id" class="tile" @dblclick="use(s)">
+    <div class="bento">
+      <article v-for="(s, i) in shown" :key="s.id" class="tile" :class="i % 5 === 0 ? 'col-6' : 'col-3'" @dblclick="use(s)">
         <header>
           <b>{{ s.name }}</b>
           <span class="brief-cat">{{ s.category }}</span>
@@ -186,11 +186,7 @@ onMounted(load)
   background: rgba(28, 31, 35, 0.06);
   border-color: var(--sc-line-strong);
 }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(238px, 1fr));
-  gap: 10px;
-}
+.bento > .tile { min-width: 0; }
 .tile {
   display: flex;
   flex-direction: column;

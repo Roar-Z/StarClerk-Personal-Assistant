@@ -154,8 +154,8 @@ onMounted(async () => {
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="page-inner stack">
-        <div v-if="isLoggedIn && profile" class="card">
+      <div class="page-inner bento">
+        <div v-if="isLoggedIn && profile" class="card col-4">
           <div class="card-head">
             <span class="card-title">画像</span>
             <span class="card-hint">按入库时的标签粗略统计</span>
@@ -169,7 +169,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card">
+        <div class="card col-8">
           <div class="card-head">
             <span class="card-title">让它记住一件事</span>
           </div>
@@ -189,7 +189,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div v-if="summary" class="card">
+        <div v-if="summary" class="card col-12">
           <div class="card-head">
             <span class="card-title">这段时间的总结</span>
             <button class="link-x" @click="summary = ''">收起</button>
@@ -199,7 +199,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div class="card">
+        <div class="card col-12">
           <div class="card-head">
             <span class="card-title">已记住的内容</span>
             <span class="card-hint">{{ shown.length }} 条</span>

@@ -114,8 +114,8 @@ async function uninstallApp() {
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="page-inner stack">
-        <section class="card">
+      <div class="page-inner bento">
+        <section class="card col-7">
           <div class="card-head">
             <span class="card-title">版本信息</span>
             <span class="pill" :class="`tier-${info?.tier || 'guest'}`">{{ info?.tier_label || '未登录' }}</span>
@@ -150,7 +150,7 @@ async function uninstallApp() {
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-5">
           <div class="card-head">
             <span class="card-title">开机自启</span>
             <span class="card-hint">注册表 HKCU</span>
@@ -173,7 +173,7 @@ async function uninstallApp() {
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-12">
           <div class="card-head">
             <span class="card-title">运行日志</span>
             <span class="card-hint">{{ logs.length }} 份 · {{ size(logSize) }}</span>
@@ -195,7 +195,7 @@ async function uninstallApp() {
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-7">
           <div class="card-head">
             <span class="card-title">清理工具</span>
             <span class="card-hint">删了就找不回</span>
@@ -240,7 +240,7 @@ async function uninstallApp() {
           </div>
         </section>
 
-        <section class="card">
+        <section class="card col-5">
           <div class="card-head">
             <span class="card-title">卸载</span>
             <span class="card-hint">会打开卸载向导</span>

@@ -113,8 +113,8 @@ onMounted(load)
       </div>
     </header>
 
-    <div class="body">
-      <aside class="list">
+    <div class="body bento">
+      <aside class="list col-4">
         <div class="cats">
           <button :class="{ on: cat === '' }" @click="((cat = ''), load())">全部 {{ total }}</button>
           <button
@@ -157,7 +157,7 @@ onMounted(load)
         </template>
       </aside>
 
-      <section class="editor">
+      <section class="editor col-8">
         <template v-if="cur">
           <input v-model="draft.title" class="title" placeholder="标题" />
           <div class="meta">
@@ -198,9 +198,7 @@ onMounted(load)
 .body {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 12px;
+  align-items: stretch;
   margin-top: 12px;
   padding-bottom: 16px;
 }

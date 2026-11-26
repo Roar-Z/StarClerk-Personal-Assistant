@@ -384,6 +384,31 @@ body {
   background: transparent;
 }
 
+/* ---------- 混合网格：每行不同列数，错落排版 ---------- */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.bento > * { min-width: 0; }
+.col-3  { grid-column: span 3; }
+.col-4  { grid-column: span 4; }
+.col-5  { grid-column: span 5; }
+.col-6  { grid-column: span 6; }
+.col-7  { grid-column: span 7; }
+.col-8  { grid-column: span 8; }
+.col-9  { grid-column: span 9; }
+.col-12 { grid-column: span 12; }
+@media (max-width: 1100px) {
+  .bento { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .col-3, .col-4, .col-5 { grid-column: span 6; }
+  .col-7, .col-8, .col-9 { grid-column: span 12; }
+}
+@media (max-width: 720px) {
+  .bento > * { grid-column: span 12 !important; }
+}
+
 /* ---------- 页面骨架 ---------- */
 .page {
   display: flex;
@@ -504,6 +529,7 @@ body {
   background: var(--sc-surface);
   border: 1px solid var(--sc-line);
   border-radius: var(--sc-radius);
+  min-width: 0;
 }
 .card-head {
   display: flex;

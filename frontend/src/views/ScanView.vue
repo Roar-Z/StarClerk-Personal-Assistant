@@ -113,8 +113,8 @@ onUnmounted(() => window.removeEventListener('sc:scan', runOcr))
     </header>
 
     <div class="page-body sc-scroll">
-      <div class="scan-grid">
-        <section class="card">
+      <div class="bento">
+        <section class="card col-7">
           <div class="card-head">
             <span class="card-title">识别</span>
             <span class="card-hint">{{ fileName || '本地 OCR' }}</span>
@@ -156,7 +156,7 @@ onUnmounted(() => window.removeEventListener('sc:scan', runOcr))
           </div>
         </section>
 
-        <section v-if="!isGuest" class="card">
+        <section v-if="!isGuest" class="card col-5">
           <div class="card-head">
             <span class="card-title">采购清单合并</span>
             <span class="card-hint">按地点归类</span>
@@ -184,8 +184,8 @@ onUnmounted(() => window.removeEventListener('sc:scan', runOcr))
 
 <style scoped>
 .scan { display: flex; flex-direction: column; height: 100%; }
-.scan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 16px 20px; height: 100%; }
-.scan-grid .card { min-height: 0; display: flex; flex-direction: column; }
+.bento { padding: 14px 16px 20px; height: 100%; }
+.bento > .card { min-height: 0; display: flex; flex-direction: column; }
 textarea { width: 100%; margin-top: 10px; padding: 9px; resize: vertical; font-size: 12px; line-height: 1.7; color: var(--sc-text); background: var(--sc-surface); border: 1px solid var(--sc-line); border-radius: 6px; outline: none; }
 textarea:focus { border-color: var(--sc-accent); }
 .seg { display: inline-flex; gap: 2px; padding: 2px; background: rgba(21, 27, 38, 0.045); border-radius: 7px; }

@@ -54,8 +54,8 @@ onMounted(load)
       </div>
     </header>
 
-    <div class="cards">
-      <section class="card">
+    <div class="bento">
+      <section class="card col-12">
         <div class="card-head">
           <span class="card-title">现在装了些什么</span>
           <span class="card-hint">{{ info?.tier }}</span>
@@ -72,7 +72,7 @@ onMounted(load)
         </div>
       </section>
 
-      <section class="card">
+      <section class="card col-5">
         <div class="card-head">
           <span class="card-title">导出</span>
           <span class="card-hint">打包成一个 zip</span>
@@ -86,7 +86,7 @@ onMounted(load)
         </div>
       </section>
 
-      <section class="card">
+      <section class="card col-7">
         <div class="card-head">
           <span class="card-title">导入</span>
           <span class="card-hint">会覆盖现有数据</span>
@@ -104,7 +104,7 @@ onMounted(load)
         </div>
       </section>
 
-      <section class="card">
+      <section class="card col-12">
         <div class="card-head">
           <span class="card-title">备份</span>
           <span class="card-hint">最近的 5 个</span>
@@ -125,10 +125,7 @@ onMounted(load)
   padding: 20px 24px 40px;
   overflow-y: auto;
 }
-.cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+.bento {
   margin-top: 12px;
 }
 .card {
