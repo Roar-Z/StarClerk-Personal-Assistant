@@ -36,6 +36,7 @@ class AgentState(TypedDict, total=False):
     use_rag: bool
     allow_web: bool
     allow_memory: bool  # 未登录没有长期记忆，召回节点直接跳过
+    allow_todo: bool  # 未登录不能写待办，工具 schema 都不给它看
     doc_scope: str
     workspace: str
     max_steps: int

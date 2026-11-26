@@ -42,22 +42,27 @@ def _focus_query(state: AgentState) -> str:
 def node_plan(state: AgentState) -> AgentState:
     use_rag = state.get("use_rag", True)
     allow_web = state.get("allow_web", True)
-    tools = registry.schemas(use_rag=use_rag, allow_web=allow_web)
+    allow_todo = bool(state.get("allow_todo", False))
+    tools = registry.schemas(use_rag=use_rag, allow_web=allow_web, allow_todo=allow_todo)
     iteration = int(state.get("iterations", 0)) + 1
 
     # 产品使用类问题不靠模型自觉，命中意图就先查内置帮助。查过一次就不再强制，避免死循环。
     seen = {o.get("tool") for o in state.get("observations") or []}
-    if (
-        state.get("mode") == "chat"
-        and "help_search" not in seen
-        and prompts.is_help_intent(state.get("query", ""))
-    ):
-        return {
-            "iterations": iteration,
-            "pending_calls": [{"name": "help_search", "arguments": {"query": state["query"]}}],
-            "draft": "",
-            "steps": [{"index": iteration, "kind": "think", "content": "使用类问题，先查内置帮助"}],
-        }
+    if state.get("mode") == "chat":
+        if "help_search" not in seen and prompts.is_help_intent(state.get("query", "")):
+            return {
+                "iterations": iteration,
+                "pending_calls": [{"name": "help_search", "arguments": {"query": state["query"]}}],
+                "draft": "",
+                "steps": [{"index": iteration, "kind": "think", "content": "使用类问题，先查内置帮助"}],
+            }
+        if "todo_add" not in seen and allow_todo and prompts.is_todo_intent(state.get("query", "")):
+            return {
+                "iterations": iteration,
+                "pending_calls": [{"name": "todo_add", "arguments": {"text": state["query"]}}],
+                "draft": "",
+                "steps": [{"index": iteration, "kind": "think", "content": "待办类问题，直接写进清单"}],
+            }
 
     messages: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt(state)}]
     messages += state.get("history", [])[-6:]
@@ -127,7 +132,7 @@ def node_act(state: AgentState) -> AgentState:
                 "summary": result["summary"],
             }
         )
-        if result["tool"] in ("rag_search", "help_search"):
+        if result["tool"] in ("rag_search", "help_search", "todo_add"):
             contexts = _merge_contexts(contexts, result.get("data") or [])
         steps.append(
             {
@@ -149,6 +154,17 @@ def node_judge(state: AgentState) -> AgentState:
             "notify_level": "info",
             "need_more": False,
             "steps": [{"index": int(state.get("iterations", 1)), "kind": "finish", "content": "模型不可用"}],
+        }
+
+    # 写待办是确定动作，写进去就直接回执，不再让模型多问一句“要加吗”
+    last = (state.get("observations") or [])[-1] if state.get("observations") else None
+    if last and last.get("tool") == "todo_add" and last.get("ok"):
+        answer = str(last.get("summary") or "已加入待办")
+        return {
+            "answer": answer,
+            "need_more": False,
+            "usage": state.get("usage") or {},
+            "steps": [{"index": int(state.get("iterations", 1)), "kind": "finish", "content": answer[:120]}],
         }
 
     draft = (state.get("draft") or "").strip()

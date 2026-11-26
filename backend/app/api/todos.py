@@ -71,34 +71,17 @@ def create(body: TodoIn):
         raise HTTPException(400, "priority 只能是 low / normal / high")
     if body.repeat not in ("once", "daily", "weekly", "monthly"):
         raise HTTPException(400, "repeat 只能是 once / daily / weekly / monthly")
-    tid = db.new_id()
-    t = db.now()
-    due = body.due_at
-    end = body.end_at or (due + 1800 if due else None)
-    remind = due - max(0, body.lead_minutes) * 60 if due else None
-    db.exec_sql(
-        "INSERT INTO todos(id,title,note,due_at,end_at,priority,tags,repeat,lead_minutes,remind_at,"
-        "reminded,done,done_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,0,0,NULL,?,?)",
-        (
-            tid,
-            body.title.strip(),
-            body.note.strip(),
-            due,
-            end,
-            body.priority,
-            body.tags.strip(),
-            body.repeat,
-            max(0, body.lead_minutes),
-            remind,
-            t,
-            t,
-        ),
+    result = todos.add(
+        title=body.title,
+        note=body.note,
+        due_at=body.due_at,
+        end_at=body.end_at,
+        priority=body.priority,
+        tags=body.tags,
+        repeat=body.repeat,
+        lead_minutes=body.lead_minutes,
     )
-    row = db.row("SELECT * FROM todos WHERE id=?", (tid,)) or {}
-    result = {"item": _row_out(row)}
-    if due and end:
-        result["conflicts"] = todos.conflicts(due, end, tid)
-    return result
+    return {"item": _row_out(result["item"]), **({"conflicts": result["conflicts"]} if result.get("conflicts") else {})}
 
 
 @router.patch("/{tid}", summary="改待办")

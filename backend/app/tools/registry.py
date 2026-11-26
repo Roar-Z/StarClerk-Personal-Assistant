@@ -7,11 +7,26 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from . import help_search, rag_search, web_search
+from . import help_search, rag_search, todo_add, web_search
 
 MAX_SUMMARY = 1500
 
 _SPECS: dict[str, dict[str, Any]] = {
+    "todo_add": {
+        "type": "function",
+        "function": {
+            "name": "todo_add",
+            "description": "把一句话直接写成待办并保存到清单，不需要用户再确认。用于「加个待办」「提醒我」「明天几点做什么」。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "用户原话，包含时间、优先级、标签等信息"},
+                    "note": {"type": "string", "description": "可选备注"},
+                },
+                "required": ["text"],
+            },
+        },
+    },
     "help_search": {
         "type": "function",
         "function": {
@@ -60,15 +75,18 @@ _SPECS: dict[str, dict[str, Any]] = {
 }
 
 _HANDLERS: dict[str, Callable[..., dict]] = {
+    "todo_add": todo_add.run,
     "help_search": help_search.run,
     "web_search": web_search.run,
     "rag_search": rag_search.run,
 }
 
 
-def schemas(use_rag: bool = True, allow_web: bool = True) -> list[dict[str, Any]]:
-    """按本次请求允许的工具裁剪 schema。帮助工具谁都能用，未登录也能问怎么用。"""
+def schemas(use_rag: bool = True, allow_web: bool = True, allow_todo: bool = False) -> list[dict[str, Any]]:
+    """按本次请求允许的工具裁剪 schema。帮助工具谁都能用，写待办要登录。"""
     names = ["help_search"]
+    if allow_todo:
+        names.append("todo_add")
     if allow_web:
         names.append("web_search")
     if use_rag:
@@ -124,6 +142,8 @@ def _summarize(name: str, items: list[dict[str, Any]]) -> str:
     for i, it in enumerate(items, 1):
         if name == "web_search":
             lines.append(f"{i}. {it.get('title', '')} — {it.get('url', '')}\n   {it.get('snippet', '')}")
+        elif name == "todo_add":
+            lines.append(f"{i}. {it.get('text', '已加入待办')}")
         else:
             lines.append(f"{i}. [{it.get('source', '资料')}] {it.get('text', '')}")
     return "\n".join(lines)

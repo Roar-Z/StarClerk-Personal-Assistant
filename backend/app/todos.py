@@ -159,6 +159,40 @@ def parse(text: str, now: float | None = None) -> dict[str, Any]:
     }
 
 
+def add(title: str, note: str = "", due_at: float | None = None, end_at: float | None = None,
+        priority: str = "normal", tags: str = "", repeat: str = "once", lead_minutes: int = 0) -> dict[str, Any]:
+    """保存一条待办，API 和 Agent 工具都走这里，别把 INSERT 写两遍。"""
+    tid = db.new_id()
+    t = db.now()
+    due = due_at
+    end = end_at or (due + 1800 if due else None)
+    lead = max(0, int(lead_minutes or 0))
+    remind = due - lead * 60 if due else None
+    db.exec_sql(
+        "INSERT INTO todos(id,title,note,due_at,end_at,priority,tags,repeat,lead_minutes,remind_at,"
+        "reminded,done,done_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,0,0,NULL,?,?)",
+        (
+            tid,
+            str(title).strip()[:200],
+            str(note or "").strip(),
+            due,
+            end,
+            priority if priority in ("low", "normal", "high") else "normal",
+            str(tags or "").strip(),
+            repeat if repeat in ("once", "daily", "weekly", "monthly") else "once",
+            lead,
+            remind,
+            t,
+            t,
+        ),
+    )
+    row = db.row("SELECT * FROM todos WHERE id=?", (tid,)) or {}
+    result = {"item": row}
+    if due and end:
+        result["conflicts"] = conflicts(due, end, tid)
+    return result
+
+
 def next_due(row: dict[str, Any]) -> float | None:
     """重复事件完成后算下一次；一次性事件返回 None。"""
     repeat = row.get("repeat") or "once"

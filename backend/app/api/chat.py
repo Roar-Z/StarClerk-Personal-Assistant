@@ -22,6 +22,7 @@ from ..agent import graph, prompts
 from ..db import models
 from ..export import docx_bytes
 from ..llm import client as llm
+from ..tools import todo_add
 from ..vector import lancedb_store as vs
 from .deps import failure
 
@@ -160,13 +161,25 @@ def chat_stream(body: ChatIn):
                 hits = []
         hist = list(_guest_hist.get(sid, [])) if guest else sessions.history(sid, 10)
         parts: list[str] = []
-        try:
-            for piece in llm.stream_text(_prompt(text, hist, hits), session_id=sid):
-                parts.append(piece)
-                yield frame({"type": "delta", "text": piece})
-        except Exception as e:  # noqa: BLE001
-            yield frame({"type": "error", "message": str(e)[:300]})
-            return
+        # 写待办是确定动作：直接落库 + 整段回执，不调模型，也不问确认
+        if not guest and prompts.is_todo_intent(text):
+            try:
+                hit = todo_add.run(text)["items"][0]
+                answer = str(hit.get("answer") or hit.get("text") or "已加入待办")
+                hits = [hit]
+                parts.append(answer)
+                yield frame({"type": "delta", "text": answer})
+            except Exception as e:  # noqa: BLE001
+                yield frame({"type": "error", "message": str(e)[:300]})
+                return
+        else:
+            try:
+                for piece in llm.stream_text(_prompt(text, hist, hits), session_id=sid):
+                    parts.append(piece)
+                    yield frame({"type": "delta", "text": piece})
+            except Exception as e:  # noqa: BLE001
+                yield frame({"type": "error", "message": str(e)[:300]})
+                return
 
         answer = "".join(parts).strip()
         if not answer:

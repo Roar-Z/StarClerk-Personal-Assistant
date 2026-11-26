@@ -31,6 +31,9 @@ def _after_plan(state: AgentState) -> str:
 
 
 def _after_act(state: AgentState) -> str:
+    last = (state.get("observations") or [])[-1] if state.get("observations") else None
+    if last and last.get("tool") == "todo_add" and last.get("ok"):
+        return "judge"  # 已经写进去了，直接出回执，不再烧一次模型
     if int(state.get("iterations", 0)) < int(state.get("max_steps", settings.agent_max_steps)):
         return "recall"
     return "judge"
@@ -107,6 +110,7 @@ def run_chat(
             "history": history[-10:],
             "use_rag": use_rag,
             "allow_memory": allow_memory,
+            "allow_todo": not guest,
             "allow_web": settings.web_search_enabled,
             "doc_scope": doc_scope,
             "workspace": workspace,

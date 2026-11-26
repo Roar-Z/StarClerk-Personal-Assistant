@@ -9,6 +9,7 @@ PLAN_RULES = """你正在按 ReAct 方式工作：先想清楚还缺什么，再
 
 可用工具：
 - help_search：StarClerk 自己的使用说明、功能、页面、操作步骤、权限边界；
+- todo_add：把一句话直接写成待办并保存，用户不用再确认；
 - web_search：公网信息、时效性内容、你不确定的事实；
 - rag_search：用户本地知识库（个人资料、文档、历史记录）。
 
@@ -18,7 +19,8 @@ PLAN_RULES = """你正在按 ReAct 方式工作：先想清楚还缺什么，再
 3. 已有【观测】足够回答时不要再调工具，直接给出最终回答；
 4. 一次最多调 1 个工具，参数要具体（检索词不要照抄整句话）；
 5. 检索后仍无法确认，就明确说明缺少什么信息，不要猜测；
-6. 回答里提到 StarClerk 的功能或页面时，按【来源：xxx】标出依据。"""
+6. 用户说「加个待办」「提醒我」「明天几点做什么」时直接调 todo_add，写完就说已加入，不要再问确认；
+7. 回答里提到 StarClerk 的功能或页面时，按【来源：xxx】标出依据。"""
 
 PATROL_RULES = """你在执行一次后台巡检，结果会以系统通知推送给用户。
 
@@ -56,6 +58,25 @@ def is_help_intent(query: str) -> bool:
     if "starclerk" in text or "这个软件" in text or "这个应用" in text:
         return True
     return any(p in text for p in _PAGES) and any(h in text for h in _HOW)
+
+
+_TODO_WORDS = (
+    "加个待办", "加一条待办", "加入待办", "新建待办", "创建待办", "记个待办", "记一下",
+    "提醒我", "加到清单", "加进清单", "放入清单", "写进待办", "安排一下", "排个待办",
+)
+_TODO_NOISE = ("怎么", "如何", "能不能", "可以吗", "功能", "帮助", "说明")
+
+
+def is_todo_intent(query: str) -> bool:
+    text = re.sub(r"\s+", "", (query or "").lower())
+    if any(n in text for n in _TODO_NOISE):
+        return False
+    if any(w in text for w in _TODO_WORDS):
+        return True
+    # "明天下午三点取快递" 这种没说“待办”的，也按待办收
+    when = any(w in text for w in ("今天", "明天", "后天", "下周", "周", "点钟", "点", "上午", "下午", "晚上"))
+    doing = any(w in text for w in ("开会", "取", "交", "买", "送", "做", "去", "参加", "联系", "寄", "还", "复盘"))
+    return when and doing and len(text) <= 80
 
 
 def render_memories(memories: list[str]) -> str:
