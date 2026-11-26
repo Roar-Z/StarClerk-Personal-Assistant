@@ -1,4 +1,4 @@
-"""学习空间配置：开关、考试时段、cookie、运行日志，都存在本地 kv 表。
+"""学习空间配置：开关、cookie、运行日志，都存在本地 kv 表。
 
 只存必要字段，cookie 是扫码登录拿到的那一串，重启程序不会丢。
 """
@@ -12,7 +12,6 @@ from ..db import models as meta
 KEY_ENABLED = "study.enabled"        # 定时模式总开关
 KEY_COOKIE = "study.cookie"          # 学习通网页会话 cookie
 KEY_COOKIE_AT = "study.cookie_at"
-KEY_EXAMS = "study.exams"            # 考试时段列表
 KEY_LOGS = "study.logs"              # 运行日志
 KEY_LAST = "study.last_sync"         # 最近一次同步结果
 
@@ -38,15 +37,6 @@ def set_cookie(value: str) -> None:
 
 def cookie_info() -> dict[str, Any]:
     return {"logged_in": bool(cookie()), "at": meta.kv_get(KEY_COOKIE_AT, 0)}
-
-
-def exams() -> list[dict[str, Any]]:
-    v = meta.kv_get(KEY_EXAMS, [])
-    return v if isinstance(v, list) else []
-
-
-def set_exams(items: list[dict[str, Any]]) -> None:
-    meta.kv_set(KEY_EXAMS, items)
 
 
 def logs() -> list[dict[str, Any]]:
@@ -79,17 +69,3 @@ def last_sync() -> dict[str, Any]:
 
 def set_last_sync(v: dict[str, Any]) -> None:
     meta.kv_set(KEY_LAST, v)
-
-
-def in_exam(now: float | None = None) -> dict[str, Any] | None:
-    """考试保护：命中任意一段考试时段就返回那一段，外部据此跳过请求。"""
-    now = time.time() if now is None else now
-    for item in exams():
-        try:
-            start = float(item.get("start") or 0)
-            end = float(item.get("end") or 0)
-        except (TypeError, ValueError):
-            continue
-        if start and end and start <= now <= end:
-            return item
-    return None

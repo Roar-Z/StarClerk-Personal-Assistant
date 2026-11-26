@@ -361,7 +361,6 @@ export const api = {
     req<{
       enabled: boolean
       cookie: { logged_in: boolean; at: number }
-      exams: { name: string; start: number; end: number }[]
       last_sync: { at: number; status: string; new: number; reason: string }
       logs: { at: number; status: string; reason: string; new: number; detail: string }[]
       slots: string[]
@@ -372,8 +371,6 @@ export const api = {
   studyQrCheck: (key: string) =>
     req<{ status: string }>(`/study/qr/check?key=${encodeURIComponent(key)}`, { method: 'POST' }),
   studyLogout: () => req<{ ok: boolean }>('/study/logout', { method: 'POST' }),
-  studySaveExams: (items: { name: string; start: number; end: number }[]) =>
-    req<{ ok: boolean }>('/study/exams', { method: 'POST', body: JSON.stringify({ items }) }),
   studyLogs: (limit = 50) => req<{ items: { at: number; status: string; reason: string; new: number; detail: string }[] }>(`/study/logs?limit=${limit}`),
 
   // 本地 OCR + 采购清单

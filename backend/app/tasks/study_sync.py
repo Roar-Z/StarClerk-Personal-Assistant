@@ -1,7 +1,7 @@
 """学习通作业同步：每天 12:40、19:00、22:00 各查一次，其余时间不发请求。
 
 首次扫码登录成功会立刻查一次（由 api/study.py 直接调 sync_now）。
-考试时段命中就跳过，总开关关着也跳过，两种情况都只记日志、不发网络请求。
+总开关关着就只记日志，不发网络请求。
 """
 from __future__ import annotations
 
@@ -64,13 +64,9 @@ class StudySync:
         return self.sync_now(f"定时 {local.hour:02d}:{local.minute:02d}")
 
     def sync_now(self, reason: str) -> list[dict[str, Any]]:
-        """真正跑一次同步；总开关、考试保护都在这里拦。"""
+        """真正跑一次同步；总开关在这里拦。"""
         if not store.enabled():
             store.add_log("blocked", f"{reason}：总开关已关闭")
-            return []
-        exam = store.in_exam()
-        if exam:
-            store.add_log("skipped", f"{reason}：考试保护生效，跳过本次同步", detail=str(exam.get("name") or ""))
             return []
 
         try:

@@ -3,13 +3,11 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 
-type Exam = { name: string; start: number; end: number }
 type LogItem = { at: number; status: string; reason: string; new: number; detail: string }
 
 const enabled = ref(false)
 const loggedIn = ref(false)
 const cookieAt = ref(0)
-const exams = ref<Exam[]>([])
 const logs = ref<LogItem[]>([])
 const lastSync = ref<{ at: number; status: string; new: number; reason: string } | null>(null)
 const busy = ref(false)
@@ -20,9 +18,6 @@ const qrKey = ref('')
 const qrText = ref('请用手机学习通扫码登录')
 const pollTimer = ref<number | null>(null)
 
-const examOpen = ref(false)
-const examDraft = ref<Exam[]>([])
-
 const CONFIRM = `您即将开启【每日12:40 + 19:00 + 22:00定时查询】
 规则：登录成功立刻查询一次学习通作业；每天12:40、19:00、22:00各自动查询一次，其余时间不会自动请求。
 ⚠️重要提醒：
@@ -30,13 +25,12 @@ const CONFIRM = `您即将开启【每日12:40 + 19:00 + 22:00定时查询】
 2. 仅读取作业截止信息，不会自动刷课、答题、提交任务；
 3. 网页会话和手机学习通相互独立，一般不会挤下线；
 4. 登录凭证由超星平台管控，大多可以连续多日免扫码；一旦会话失效，会弹窗提醒你重新扫码；
-5. 考试保护为强制规则，考试时段会自动跳过本次查询，不可关闭；
-6. 你可在当前页面随时关闭访问学习通，停止全部自动查询；
-7. 该功能调用平台未公开接口，存在会话失效、账号风控风险；
-8. 使用本功能带来的账号相关风险，由使用者自行承担。
+5. 你可在当前页面随时关闭访问学习通，停止全部自动查询，关闭后会退出登录，下次开启需重新扫码；
+6. 该功能调用平台未公开接口，存在会话失效、账号风控风险；
+7. 使用本功能带来的账号相关风险，由使用者自行承担。
 是否确认开启？`
 
-const RISK = '账号风险较低；12:40后至19点前新增作业，等到当日19点抓取；19点后至22点前新增作业，等到当日22点抓取；22点之后新增作业，等到次日12:40抓取；登录凭证由平台管理，一般可维持多日免扫码，会话失效时弹窗提示重新扫码；网页会话与手机APP相互独立，通常不会挤下线；仅读取作业信息，不自动完成任务；考试保护强制生效，考试时段自动跳过查询；你可在本页面随时关闭访问学习通；该功能调用平台未公开接口，存在账号风控风险，使用风险由使用者自行承担。'
+const RISK = '账号风险较低；12:40后至19点前新增作业，等到当日19点抓取；19点后至22点前新增作业，等到当日22点抓取；22点之后新增作业，等到次日12:40抓取；登录凭证由平台管理，一般可维持多日免扫码，会话失效时弹窗提示重新扫码；网页会话与手机APP相互独立，通常不会挤下线；仅读取作业信息，不自动完成任务；你可在本页面随时关闭访问学习通，关闭后会退出登录；该功能调用平台未公开接口，存在账号风控风险，使用风险由使用者自行承担。'
 
 async function load() {
   try {
@@ -44,7 +38,6 @@ async function load() {
     enabled.value = s.enabled
     loggedIn.value = s.cookie.logged_in
     cookieAt.value = s.cookie.at
-    exams.value = s.exams
     logs.value = s.logs
     lastSync.value = s.last_sync?.at ? s.last_sync : null
   } catch {
@@ -134,45 +127,12 @@ async function logout() {
   await load()
 }
 
-function openExams() {
-  examDraft.value = exams.value.map((x) => ({ ...x }))
-  if (!examDraft.value.length) examDraft.value.push({ name: '考试', start: 0, end: 0 })
-  examOpen.value = true
-}
-
-function addExam() {
-  examDraft.value.push({ name: '考试', start: 0, end: 0 })
-}
-
-function delExam(i: number) {
-  examDraft.value.splice(i, 1)
-}
-
-async function saveExams() {
-  await api.studySaveExams(examDraft.value.filter((x) => x.start && x.end))
-  examOpen.value = false
-  ElMessage.success('考试时段已保存，强制保护生效')
-  await load()
-}
-
 function fmt(ts: number) {
   if (!ts) return '—'
   return new Date(ts * 1000).toLocaleString('zh-CN', { hour12: false })
 }
 
-function toLocal(ts: number) {
-  if (!ts) return ''
-  const d = new Date(ts * 1000)
-  const z = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`
-}
-
-function fromLocal(v: string) {
-  if (!v) return 0
-  return Math.floor(new Date(v).getTime() / 1000)
-}
-
-const statusText = { ok: '成功', failed: '失败', expired: '登录失效', skipped: '考试保护跳过', blocked: '总开关拦截', on: '开启', off: '关闭', login: '扫码登录', logout: '清除会话', exam: '考试时段' } as Record<string, string>
+const statusText = { ok: '成功', failed: '失败', expired: '登录失效', blocked: '总开关拦截', on: '开启', off: '关闭', login: '扫码登录', logout: '清除会话' } as Record<string, string>
 
 function onSessionExpired(e: Event) {
   const reason = (e as CustomEvent).detail || ''
@@ -229,17 +189,6 @@ onUnmounted(() => {
               最近同步：{{ fmt(lastSync.at) }} · {{ statusText[lastSync.status] || lastSync.status }} · 新作业 {{ lastSync.new }} 条
             </div>
 
-            <div class="exam-box">
-              <div class="exam-head">
-                <b>考试时段（强制保护，不可关闭）</b>
-                <button class="btn ghost small" @click="openExams">配置</button>
-              </div>
-              <p v-if="!exams.length" class="hint">还没录入考试时段。录入后，考试时间内会直接跳过查询。</p>
-              <div v-for="(x, i) in exams" :key="i" class="exam-item">
-                {{ x.name }} · {{ fmt(x.start) }} ～ {{ fmt(x.end) }}
-              </div>
-            </div>
-
             <p class="risk">{{ RISK }}</p>
           </div>
         </section>
@@ -277,24 +226,6 @@ onUnmounted(() => {
       </template>
     </el-dialog>
 
-    <el-dialog v-model="examOpen" title="考试时段" width="560px">
-      <div class="exam-edit">
-        <p class="hint">考试时段内强制跳过查询，不能关闭。支持多段。</p>
-        <div v-for="(x, i) in examDraft" :key="i" class="exam-row">
-          <input v-model="x.name" class="mini" placeholder="名称" />
-          <input v-model="x.start" type="hidden" />
-          <input :value="toLocal(x.start)" type="datetime-local" @input="x.start = fromLocal(($event.target as HTMLInputElement).value)" />
-          <span>～</span>
-          <input :value="toLocal(x.end)" type="datetime-local" @input="x.end = fromLocal(($event.target as HTMLInputElement).value)" />
-          <button class="btn ghost small" @click="delExam(i)">删</button>
-        </div>
-        <button class="btn ghost small" @click="addExam">加一段</button>
-      </div>
-      <template #footer>
-        <button class="btn ghost" @click="examOpen = false">取消</button>
-        <button class="btn" @click="saveExams">保存</button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -310,9 +241,6 @@ onUnmounted(() => {
 .badge.off { background: var(--sc-surface-2); color: var(--sc-muted); }
 .sub { font-size: 11px; color: var(--sc-muted); }
 .last { font-size: 12px; color: var(--sc-text-2); padding: 8px 10px; background: var(--sc-surface-2); border-radius: 8px; }
-.exam-box { margin: 16px 0; padding: 12px; border: 1px solid var(--sc-line); border-radius: 10px; }
-.exam-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
-.exam-item { font-size: 12px; color: var(--sc-text-2); padding: 6px 0; border-top: 1px solid var(--sc-line); }
 .risk { font-size: 11.5px; color: var(--sc-muted); line-height: 1.8; margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--sc-line); }
 .list { display: flex; flex-direction: column; gap: 6px; }
 .log-row { display: flex; gap: 9px; padding: 8px 10px; border: 1px solid var(--sc-line); border-radius: 8px; }
@@ -320,7 +248,7 @@ onUnmounted(() => {
 .log-row small { display: block; font-size: 11px; color: var(--sc-muted); margin-top: 3px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex: none; background: var(--sc-accent); }
 .dot.failed, .dot.expired { background: var(--sc-danger); }
-.dot.skipped, .dot.blocked { background: #c98242; }
+.dot.blocked { background: #c98242; }
 .dot.on, .dot.login, .dot.ok { background: #2ea078; }
 .empty { font-size: 12px; color: var(--sc-muted); text-align: center; padding: 24px 0; }
 .btn.small { padding: 4px 9px; font-size: 11px; }
@@ -329,8 +257,4 @@ onUnmounted(() => {
 .qr-box { width: 200px; height: 200px; margin: 0 auto 12px; }
 .qr-box img { width: 100%; height: 100%; }
 .qr-loading { height: 200px; display: grid; place-items: center; color: var(--sc-muted); }
-.exam-edit .hint { margin-bottom: 10px; }
-.exam-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-.exam-row input { flex: 1; min-width: 0; }
-.exam-row input.mini { flex: 0 0 80px; }
 </style>
