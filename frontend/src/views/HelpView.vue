@@ -113,7 +113,7 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 18px 20px 0;
+  padding: 20px 24px 0;
 }
 .update-bar {
   display: flex;
@@ -129,8 +129,8 @@ onMounted(load)
 }
 .update-bar.fresh {
   color: var(--sc-accent);
-  background: rgba(58, 86, 212, 0.07);
-  border-color: rgba(58, 86, 212, 0.28);
+  background: rgba(28, 31, 35, 0.06);
+  border-color: var(--sc-line-strong);
 }
 .up-file {
   margin-left: auto;

@@ -185,7 +185,7 @@ onMounted(load)
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 18px 20px 0;
+  padding: 20px 24px 0;
 }
 .head-actions {
   display: flex;
@@ -209,7 +209,7 @@ onMounted(load)
   overflow-y: auto;
   background: var(--sc-surface);
   border: 1px solid var(--sc-line);
-  border-radius: 8px;
+  border-radius: var(--sc-radius);
 }
 .cats {
   display: flex;
@@ -229,8 +229,8 @@ onMounted(load)
 }
 .cats button.on {
   color: var(--sc-accent);
-  background: rgba(58, 86, 212, 0.07);
-  border-color: rgba(58, 86, 212, 0.28);
+  background: rgba(28, 31, 35, 0.06);
+  border-color: var(--sc-line-strong);
 }
 .item {
   display: block;
@@ -246,7 +246,7 @@ onMounted(load)
   background: rgba(21, 27, 38, 0.045);
 }
 .item.on {
-  background: rgba(58, 86, 212, 0.07);
+  background: rgba(28, 31, 35, 0.06);
 }
 .item b {
   display: block;

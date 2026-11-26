@@ -239,7 +239,7 @@ onUnmounted(() => {
 .hint { font-size: 12px; color: var(--sc-muted); line-height: 1.7; margin: 6px 0; }
 .login-row { display: flex; align-items: center; gap: 10px; margin: 14px 0; }
 .login-row .btn { margin-left: auto; }
-.badge { padding: 3px 9px; border-radius: 10px; font-size: 11px; }
+.badge { padding: 3px 9px; border-radius: 4px; font-size: 11px; }
 .badge.ok { background: rgba(46,160,120,.14); color: #2ea078; }
 .badge.off { background: var(--sc-surface-2); color: var(--sc-muted); }
 .sub { font-size: 11px; color: var(--sc-muted); }

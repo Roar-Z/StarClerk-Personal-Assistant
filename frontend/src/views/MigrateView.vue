@@ -122,7 +122,7 @@ onMounted(load)
 
 <style scoped>
 .migrate {
-  padding: 18px 20px 24px;
+  padding: 20px 24px 40px;
   overflow-y: auto;
 }
 .cards {

@@ -276,7 +276,7 @@ onUnmounted(() => window.removeEventListener('sc:todo-new', onNewShortcut))
 .mini-select { width: 90px; padding: 3px 6px; }
 .filter { margin-bottom: 8px; }
 .row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 8px; text-align: left; border: 0; border-bottom: 1px solid var(--sc-line); background: transparent; cursor: pointer; }
-.row:hover, .row.on { background: rgba(58, 86, 212, 0.05); }
+.row:hover, .row.on { background: rgba(28, 31, 35, 0.06); }
 .row.finished { opacity: 0.55; }
 .row.finished .row-main b { text-decoration: line-through; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sc-line-strong); flex-shrink: 0; }
@@ -286,7 +286,7 @@ onUnmounted(() => window.removeEventListener('sc:todo-new', onNewShortcut))
 .row-main b { display: block; font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-main small { color: var(--sc-muted); font-size: 10.5px; }
 .tick, .del { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--sc-muted); cursor: pointer; }
-.tick:hover { color: var(--sc-accent); background: rgba(58, 86, 212, 0.08); }
+.tick:hover { color: var(--sc-accent); background: rgba(28, 31, 35, 0.06); }
 .del:hover { color: #c8483f; background: rgba(200, 72, 63, 0.08); }
 .phrase { display: flex; gap: 6px; margin-bottom: 10px; }
 .phrase input { flex: 1; min-width: 0; padding: 7px 9px; font-size: 12px; border: 1px solid var(--sc-line); border-radius: 6px; outline: none; }

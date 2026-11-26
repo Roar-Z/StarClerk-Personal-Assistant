@@ -1,30 +1,30 @@
-/* 设计令牌：中性灰底 + 近黑主色，少用彩色，界面才稳 */
+/* 设计令牌：近白纸面 + 石墨文字，企业软件该有的克制感 */
 :root {
-  --sc-bg: #f7f8fa;
+  --sc-bg: #fafafa;
   --sc-sidebar: #f5f6f9;
   --sc-surface: #ffffff;
-  --sc-line: #ebedf2;
-  --sc-line-strong: #dfe3ea;
-  --sc-text: #151b26;
-  --sc-text-2: #4a5468;
-  --sc-muted: #8b93a3;
-  --sc-accent: #3a56d4;
+  --sc-line: #e9eaec;
+  --sc-line-strong: #d8dadd;
+  --sc-text: #1c1f23;
+  --sc-text-2: #52565e;
+  --sc-muted: #92969e;
+  --sc-accent: #2d3138;
   --sc-danger: #b4453c;
-  --sc-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --sc-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.05);
-  --sc-radius: 12px;
+  --sc-shadow-xs: 0 1px 1px rgba(20, 22, 26, 0.03);
+  --sc-shadow-sm: 0 1px 2px rgba(20, 22, 26, 0.04);
+  --sc-radius: 6px;
 
-  --el-color-primary: #1b2230;
-  --el-color-primary-light-3: #3c4553;
-  --el-color-primary-light-5: #6b7484;
-  --el-color-primary-light-7: #b9c0cc;
-  --el-color-primary-light-8: #d7dbe2;
-  --el-color-primary-light-9: #eef0f4;
+  --el-color-primary: #2d3138;
+  --el-color-primary-light-3: #565b64;
+  --el-color-primary-light-5: #8a8f98;
+  --el-color-primary-light-7: #c4c7cc;
+  --el-color-primary-light-8: #dcdfe3;
+  --el-color-primary-light-9: #f1f2f4;
   --el-color-danger: #b4453c;
-  --el-text-color-primary: #151b26;
-  --el-text-color-regular: #4a5468;
-  --el-text-color-secondary: #8b93a3;
-  --el-text-color-placeholder: #a7aebb;
+  --el-text-color-primary: #1c1f23;
+  --el-text-color-regular: #52565e;
+  --el-text-color-secondary: #92969e;
+  --el-text-color-placeholder: #aeb2b8;
   --el-border-color: #ebedf2;
   --el-border-color-light: #f0f2f6;
   --el-border-color-lighter: #f4f5f8;
@@ -38,25 +38,25 @@
 
 /* 深色主题：只换令牌，组件那边不用跟着改 */
 :root[data-theme='dark'] {
-  --sc-bg: #10141b;
-  --sc-sidebar: #151a23;
-  --sc-surface: #1b212b;
-  --sc-line: #2b3340;
-  --sc-line-strong: #3a4453;
-  --sc-text: #e8ecf3;
-  --sc-text-2: #b6bfcd;
-  --sc-muted: #8892a3;
-  --sc-accent: #8098ff;
-  --sc-danger: #e07b72;
-  --sc-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --sc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.24);
+  --sc-bg: #16181b;
+  --sc-sidebar: #1c1f23;
+  --sc-surface: #202327;
+  --sc-line: #303338;
+  --sc-line-strong: #41454b;
+  --sc-text: #eceef1;
+  --sc-text-2: #b4b8be;
+  --sc-muted: #83888f;
+  --sc-accent: #d6d9de;
+  --sc-danger: #d97a72;
+  --sc-shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --sc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
 
-  --el-color-primary: #dfe5f0;
-  --el-color-primary-light-3: #aab4c6;
-  --el-color-primary-light-5: #7d889c;
-  --el-color-primary-light-7: #4e5869;
-  --el-color-primary-light-8: #3a4352;
-  --el-color-primary-light-9: #2a323f;
+  --el-color-primary: #d6d9de;
+  --el-color-primary-light-3: #a8acb3;
+  --el-color-primary-light-5: #7c8087;
+  --el-color-primary-light-7: #50545a;
+  --el-color-primary-light-8: #3d4147;
+  --el-color-primary-light-9: #2b2e33;
   --el-color-danger: #e07b72;
   --el-text-color-primary: #e8ecf3;
   --el-text-color-regular: #b6bfcd;
@@ -384,7 +384,7 @@ body {
   background: transparent;
 }
 
-/* ---------- 页面骨架（窄面板优先） ---------- */
+/* ---------- 页面骨架 ---------- */
 .page {
   display: flex;
   flex-direction: column;
@@ -393,13 +393,13 @@ body {
   min-width: 0;
 }
 .page-head {
-  height: 48px;
+  height: 52px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 0 16px;
+  gap: 12px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--sc-line);
   background: var(--sc-surface);
 }
@@ -435,9 +435,10 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  background: var(--sc-bg);
 }
 .page-inner {
-  padding: 14px 16px 24px;
+  padding: 20px 24px 40px;
 }
 /* 有些页面标题直接写 h1 + 说明，这里统一成和 .page-title 一样的观感 */
 .page-head h1 {
@@ -463,7 +464,7 @@ body {
   height: 28px;
   padding: 0 11px;
   border: 1px solid var(--sc-line-strong);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--sc-surface);
   color: var(--sc-text-2);
   font-family: inherit;
@@ -475,7 +476,7 @@ body {
 }
 .btn:hover {
   color: var(--sc-text);
-  border-color: #ccd3de;
+  border-color: #b9bdc4;
 }
 .btn.primary {
   border-color: var(--sc-text);
@@ -508,51 +509,56 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 11px 14px;
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--sc-line);
 }
 .card-title {
   font-size: 12.5px;
   font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .card-hint {
   font-size: 11.5px;
   color: var(--sc-muted);
 }
 .card-body {
-  padding: 14px;
+  padding: 16px;
 }
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  border: 1px solid var(--sc-line);
+  border-radius: var(--sc-radius);
+  background: var(--sc-surface);
+  overflow: hidden;
+  margin-bottom: 14px;
 }
 .stat {
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-line);
-  border-radius: 10px;
-  padding: 10px 12px;
+  padding: 14px 16px;
   min-width: 0;
+  border-right: 1px solid var(--sc-line);
+}
+.stat:last-child {
+  border-right: 0;
 }
 .stat b {
   display: block;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
-  line-height: 1.35;
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -611,14 +617,14 @@ body {
   cursor: default;
 }
 
-/* 登录状态标签：未登录灰、已登录蓝，克制一点别抢眼 */
+/* 登录状态标签：未登录灰、已登录深，不抢眼 */
 .tag.tier-guest {
   color: var(--sc-muted);
 }
 .tag.tier-free {
-  color: var(--sc-accent);
-  border-color: rgba(58, 86, 212, 0.28);
-  background: rgba(58, 86, 212, 0.06);
+  color: var(--sc-text);
+  border-color: var(--sc-line-strong);
+  background: var(--sc-bg);
 }
 
 /* Element Plus 微调 */
@@ -642,10 +648,10 @@ body {
 .el-input__wrapper.is-focus,
 .el-textarea__inner:focus,
 .el-select__wrapper.is-focused {
-  box-shadow: 0 0 0 1px #c3cbd9 inset, 0 0 0 3px rgba(58, 86, 212, 0.07) !important;
+  box-shadow: 0 0 0 1px #b9bdc4 inset !important;
 }
 .el-dialog {
-  border-radius: 12px;
+  border-radius: 8px;
   max-width: calc(100vw - 32px);
 }
 .el-dialog__header {
@@ -664,28 +670,10 @@ body {
   padding: 6px;
 }
 
-/* 浏览器里放大窗口时，内容跟着宽松一些 */
+/* 大窗口：右栏铺满，不再把内容挤成一条窄栏 */
 @media (min-width: 720px) {
-  .page-head {
-    padding: 0 24px;
-  }
-  .page-inner {
-    max-width: 880px;
-    margin: 0 auto;
-    padding: 18px 24px 32px;
-  }
   .grid-2 {
     grid-template-columns: 1fr 1fr;
     gap: 16px;
-  }
-  .stats {
-    gap: 14px;
-    margin-bottom: 16px;
-  }
-  .stat {
-    padding: 14px 16px;
-  }
-  .stat b {
-    font-size: 22px;
   }
 }

@@ -81,7 +81,7 @@ kbd { padding: 2px 5px; font-size: 10px; font-family: inherit; color: var(--sc-m
 .cap { margin: 10px 14px 4px; font-size: 10.5px; letter-spacing: 0.06em; color: var(--sc-muted); }
 .list { max-height: 320px; overflow-y: auto; padding: 0 8px 8px; }
 .list button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; text-align: left; border: 0; border-radius: 7px; background: transparent; cursor: pointer; color: var(--sc-muted); }
-.list button:hover { background: rgba(58, 86, 212, 0.06); color: var(--sc-accent); }
+.list button:hover { background: var(--sc-bg); color: var(--sc-text); }
 .ico { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--sc-line); border-radius: 7px; color: var(--sc-text-2); }
 .txt { flex: 1; }
 .txt b { display: block; font-size: 12.5px; font-weight: 600; color: var(--sc-text); }

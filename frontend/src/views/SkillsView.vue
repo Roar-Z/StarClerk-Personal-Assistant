@@ -158,7 +158,7 @@ onMounted(load)
 
 <style scoped>
 .skills {
-  padding: 18px 20px 24px;
+  padding: 20px 24px 40px;
   overflow-y: auto;
 }
 .head-actions {
@@ -183,8 +183,8 @@ onMounted(load)
 }
 .chips button.on {
   color: var(--sc-accent);
-  background: rgba(58, 86, 212, 0.07);
-  border-color: rgba(58, 86, 212, 0.28);
+  background: rgba(28, 31, 35, 0.06);
+  border-color: var(--sc-line-strong);
 }
 .grid {
   display: grid;
@@ -194,14 +194,14 @@ onMounted(load)
 .tile {
   display: flex;
   flex-direction: column;
-  padding: 12px 13px 10px;
+  padding: 14px 15px 12px;
   background: var(--sc-surface);
   border: 1px solid var(--sc-line);
-  border-radius: 8px;
+  border-radius: var(--sc-radius);
   transition: border-color 0.15s;
 }
 .tile:hover {
-  border-color: rgba(58, 86, 212, 0.28);
+  border-color: var(--sc-line-strong);
 }
 .tile header {
   display: flex;

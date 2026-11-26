@@ -337,8 +337,7 @@
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
 .composer:focus-within {
-  border-color: #c3cbd9;
-  box-shadow: 0 0 0 3px rgba(58, 86, 212, 0.07);
+  border-color: var(--sc-line-strong);
 }
 .composer textarea {
   display: block;
@@ -389,8 +388,8 @@
   color: var(--sc-text-2);
 }
 .tool-btn.on {
-  color: var(--sc-accent, #3a56d4);
-  background: rgba(58, 86, 212, 0.08);
+  color: var(--sc-text);
+  background: var(--sc-bg);
 }
 .composer-hint {
   margin-left: 5px;
