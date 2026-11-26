@@ -19,7 +19,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
-from .. import access, license
+from .. import access, help as help_kb, license
 from ..config import APP_NAME, APP_VERSION, is_frozen, settings
 from ..db import models as meta
 from ..db import sqlite as db
@@ -176,42 +176,9 @@ def uninstall():
 
 
 # ---------------------------------------------------------------- 帮助 / 引导 / 更新
-_HELP = """## 开始用
-
-1. 到「模型」页点「登录」，未登录只能用 Kilo 的免费模型，登录后所有功能都开着。
-2. 回到「对话」，第一句话随便问，先确认能通；想用自己的 key 再回「模型」页换。
-3. 想让它认你的资料，去「资料」页传文档；登录后最多 500 份。
-
-## 常用操作
-
-- **导出对话**：对话页右上角，Markdown / 纯文本 / Word 三种。
-- **让它定时盯着**：任务页新建，写清要它判断什么；填了网址就按网页变化触发。
-- **记住你的习惯**：记忆页能看到它记了什么，不对的单条删掉。
-- **待办和日程**：待办页输一句话就能拆出时间，重复事件自动排下一次，能导 CSV 和日历。
-- **快递小票**：扫描页本地识字，取件码一键复制；采购清单按地点并成一张。
-- **悬浮指令**：Ctrl + Alt + Space 弹命令面板；设置里能换主题、开悬浮窗。
-- **换电脑**：系统页有迁移向导，导出 zip 带走。
-
-## 数据在哪
-
-全在安装目录的 `data` 下。`starcLerk.db` 是数据库，`uploads` 是传的文档，
-`lancedb` 是向量索引。想彻底清掉就用系统页的清理工具。
-
-## 卡住了
-
-- 模型报 401：key 不对或过期。
-- 模型报 429：上游限流，等一会儿或者换个模型。
-- 检索没结果：文档切片没建好，把文档删了重传一次。
-"""
-
-_GUIDE = [
-    {"key": "model", "title": "先登录", "body": "去「模型」页点一下「登录」，本机登录不联网，之后想用自己的 key 再在同一页换。", "page": "settings"},
-    {"key": "chat", "title": "问第一句", "body": "直接打字问，Enter 发送。回答下面能看到用到的资料。", "page": "chat"},
-    {"key": "todo", "title": "记件待办", "body": "「待办」页输一句话，比如「明早九点取快递」，它会自动拆好时间。", "page": "todo"},
-    {"key": "rag", "title": "传份资料", "body": "「资料」页拖文件进去，建好索引后对话会自动检索。", "page": "knowledge"},
-    {"key": "task", "title": "挂个任务", "body": "想让它在后台盯事情，去「任务」页新建，填网址就按页面变化提醒。", "page": "tasks"},
-    {"key": "tier", "title": "看看能用多少", "body": "「模型」页能看到当前是未登录还是已登录，以及任务、资料、笔记的额度。", "page": "settings"},
-]
+# 帮助页和 Agent 的 help_search 共用一份内容，别在两边各维护一份
+_HELP = help_kb.markdown()
+_GUIDE = help_kb.guide_items()
 
 
 @router.get("/help", summary="内置帮助文档")

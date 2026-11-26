@@ -15,9 +15,10 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
+from .. import help as help_kb
 from .. import license, quota, sessions, ocr
 from ..access import require
-from ..agent import graph
+from ..agent import graph, prompts
 from ..db import models
 from ..export import docx_bytes
 from ..llm import client as llm
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 SYSTEM = (
     "你是 StarClerk，运行在用户自己电脑上的桌面助手。回答尽量具体，别绕圈子，"
     "不确定就说不确定。下面的资料片段如果和问题有关就用上，无关就别硬塞。"
+    "资料里带【来源】的，回答时按【来源：xxx】标出来。"
 )
 
 
@@ -148,7 +150,10 @@ def chat_stream(body: ChatIn):
 
         yield frame({"type": "meta", "session_id": sid, "tier": license.tier()})
         hits: list[dict[str, Any]] = []
-        if body.use_rag and not guest:
+        # 流式没跑 Agent，使用类问题在这里直接把帮助知识库塞进资料片段
+        if prompts.is_help_intent(text):
+            hits = help_kb.search(text, 4)
+        elif body.use_rag and not guest:
             try:
                 hits = vs.search_documents(text, 4)
             except Exception:  # noqa: BLE001  检索挂了也别影响回答

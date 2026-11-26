@@ -1,17 +1,32 @@
 """工具注册表：schema 直接喂给 OpenAI 兼容的 tool calling，handler 统一返回 text/data。
 
-刻意只保留两个工具（网页搜索、本地 RAG），不提供 ComputerUse / 代码执行等能力。
+只放三个工具：产品帮助知识库、网页搜索、本地 RAG；不提供 ComputerUse / 代码执行。
 """
 from __future__ import annotations
 
 import json
 from typing import Any, Callable
 
-from . import rag_search, web_search
+from . import help_search, rag_search, web_search
 
 MAX_SUMMARY = 1500
 
 _SPECS: dict[str, dict[str, Any]] = {
+    "help_search": {
+        "type": "function",
+        "function": {
+            "name": "help_search",
+            "description": "查 StarClerk 自己的使用说明：功能、页面、操作步骤、权限边界、常见问题。问这个软件怎么用时优先用它。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "用户问的使用问题，如「怎么导出对话」「新手引导」"},
+                    "top_k": {"type": "integer", "description": "返回段落数，默认 4，最多 6"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
     "web_search": {
         "type": "function",
         "function": {
@@ -45,14 +60,15 @@ _SPECS: dict[str, dict[str, Any]] = {
 }
 
 _HANDLERS: dict[str, Callable[..., dict]] = {
+    "help_search": help_search.run,
     "web_search": web_search.run,
     "rag_search": rag_search.run,
 }
 
 
 def schemas(use_rag: bool = True, allow_web: bool = True) -> list[dict[str, Any]]:
-    """按本次请求允许的工具裁剪 schema，模型不会看到被禁用的工具。"""
-    names = []
+    """按本次请求允许的工具裁剪 schema。帮助工具谁都能用，未登录也能问怎么用。"""
+    names = ["help_search"]
     if allow_web:
         names.append("web_search")
     if use_rag:

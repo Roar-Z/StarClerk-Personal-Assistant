@@ -43,12 +43,26 @@ def node_plan(state: AgentState) -> AgentState:
     use_rag = state.get("use_rag", True)
     allow_web = state.get("allow_web", True)
     tools = registry.schemas(use_rag=use_rag, allow_web=allow_web)
+    iteration = int(state.get("iterations", 0)) + 1
+
+    # 产品使用类问题不靠模型自觉，命中意图就先查内置帮助。查过一次就不再强制，避免死循环。
+    seen = {o.get("tool") for o in state.get("observations") or []}
+    if (
+        state.get("mode") == "chat"
+        and "help_search" not in seen
+        and prompts.is_help_intent(state.get("query", ""))
+    ):
+        return {
+            "iterations": iteration,
+            "pending_calls": [{"name": "help_search", "arguments": {"query": state["query"]}}],
+            "draft": "",
+            "steps": [{"index": iteration, "kind": "think", "content": "使用类问题，先查内置帮助"}],
+        }
 
     messages: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt(state)}]
     messages += state.get("history", [])[-6:]
     messages.append({"role": "user", "content": state["query"]})
 
-    iteration = int(state.get("iterations", 0)) + 1
     try:
         res = client.complete(
             messages, tools=tools or None, temperature=0.2, scope=state.get("mode", "chat")
@@ -113,7 +127,7 @@ def node_act(state: AgentState) -> AgentState:
                 "summary": result["summary"],
             }
         )
-        if result["tool"] == "rag_search":
+        if result["tool"] in ("rag_search", "help_search"):
             contexts = _merge_contexts(contexts, result.get("data") or [])
         steps.append(
             {

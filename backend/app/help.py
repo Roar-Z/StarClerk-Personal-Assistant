@@ -1,0 +1,221 @@
+"""内置产品帮助知识库。
+
+不联网、不占向量库：按段落存，带来源标签。帮助页和 Agent 的工具都读这一份，
+省得两边文案各写一套，过两个月就对不上了。
+"""
+from __future__ import annotations
+
+import re
+from typing import Any
+
+SECTIONS: list[dict[str, Any]] = [
+    {
+        "id": "start",
+        "source": "内置帮助 · 开始使用",
+        "title": "开始使用",
+        "keywords": ["新手", "入门", "指导", "引导", "怎么用", "开始", "第一步", "登录"],
+        "text": (
+            "第一次用三步：到「模型」页点「登录」，本机登录不联网；回「对话」随便问一句，确认模型能通；"
+            "要让它认你的资料，再去「资料」页传文档。未登录只能对话，会话不保存，也用不了资料、待办、记忆这些功能。"
+        ),
+    },
+    {
+        "id": "pages",
+        "source": "内置帮助 · 页面总览",
+        "title": "页面总览",
+        "keywords": ["功能", "有哪些", "页面", "菜单", "总览", "侧栏"],
+        "text": (
+            "左侧一共 13 个入口：对话、待办、任务、扫描、记忆、资料、笔记、技能、模型、用量、帮助、迁移、系统。"
+            "工作台放日常用的功能，设置放模型、用量、帮助、迁移和系统。"
+        ),
+    },
+    {
+        "id": "chat",
+        "source": "内置帮助 · 对话",
+        "title": "对话",
+        "keywords": ["对话", "聊天", "流式", "导出", "markdown", "word", "语音", "朗读", "识图", "ocr", "导图", "搜索会话"],
+        "text": (
+            "对话页 Enter 发送，右上角「流式」开关逐字显示回答。输入框下面四个按钮依次是语音输入、朗读、传图识字和思维导图。"
+            "传图识字走本地 OCR，不联网；会话搜索按消息正文查；导出有 Markdown、纯文本、Word 三种。"
+            "旧会话可以点左侧标题切换，未登录的会话只在内存里，关掉软件就没了。"
+        ),
+    },
+    {
+        "id": "todos",
+        "source": "内置帮助 · 待办与日程",
+        "title": "待办与日程",
+        "keywords": ["待办", "日程", "提醒", "重复", "冲突", "出门", "ical", "csv", "优先级", "标签"],
+        "text": (
+            "待办页在「记一条」里输一句话，比如「明天下午三点开会，重要，提前20分钟出门 #工作」，点「拆一句」会自动拆时间、"
+            "优先级、标签和出门预留。重复事件完成后自动生成下一条；时间重叠会给冲突提示；到点走托盘提醒。"
+            "清单可以导出 CSV，日历可以导出 iCal。"
+        ),
+    },
+    {
+        "id": "tasks",
+        "source": "内置帮助 · 托管任务",
+        "title": "托管任务",
+        "keywords": ["任务", "托管", "巡检", "网页", "监控", "定时", "日志", "提醒"],
+        "text": (
+            "任务页是后台巡检，不是待办清单。新建时写清让它判断什么；填了网址会先抓网页正文，内容没变化就不调用模型。"
+            "登录状态最多 5 个任务，巡检历史可以导出 CSV。未登录不能用这个功能。"
+        ),
+    },
+    {
+        "id": "scan",
+        "source": "内置帮助 · 扫描与采购清单",
+        "title": "扫描与采购清单",
+        "keywords": ["扫描", "ocr", "快递", "小票", "取件码", "采购", "清单", "合并", "识别"],
+        "text": (
+            "扫描页用本地 OCR 识字，图片不上传。快递单抽单号、取件码和取件点，小票抽商家、日期、合计和明细，"
+            "取件码可以一键复制，也能直接生成待办备忘。采购清单把每行一条备忘按地点合并，同名自动累加数量，"
+            "派不上用场的地点归到「其他」。"
+        ),
+    },
+    {
+        "id": "knowledge",
+        "source": "内置帮助 · 资料与笔记",
+        "title": "资料与笔记",
+        "keywords": ["资料", "知识库", "文档", "上传", "检索", "摘要", "翻译", "表格", "笔记", "标签", "向量"],
+        "text": (
+            "资料页上传文档后建向量索引，对话会自动检索；登录后最多 500 份。批量摘要、翻译、表格提取在资料页里选多篇一起做。"
+            "笔记页按分类和标签管理自己的文字，正文也能参与统一检索。未登录没有知识库和笔记。"
+        ),
+    },
+    {
+        "id": "memory",
+        "source": "内置帮助 · 记忆系统",
+        "title": "记忆系统",
+        "keywords": ["记忆", "画像", "归档", "分组", "总结", "备份", "导入", "导出", "记住"],
+        "text": (
+            "记忆页能看到长期记忆和个人画像。自动整理按类型分组并起组名，可以手动改分类、删条目、生成总结。"
+            "备份导出 zip，换机器导入即可。回答时会参考画像里的偏好，但不会把整条记忆原文念出来。"
+        ),
+    },
+    {
+        "id": "skills",
+        "source": "内置帮助 · 技能模板",
+        "title": "技能模板",
+        "keywords": ["技能", "模板", "skill", "导入", "导出", "流程", "分类"],
+        "text": (
+            "技能页有内置模板，也能自由新建、编辑、分类、导入导出。对话里点「技能」选一个模板，"
+            "就会按模板里的流程处理当前问题。登录状态下这些模板都能改。"
+        ),
+    },
+    {
+        "id": "usage",
+        "source": "内置帮助 · 用量与日志",
+        "title": "用量与日志",
+        "keywords": ["用量", "token", "统计", "图表", "告警", "日志", "导出"],
+        "text": (
+            "用量页有 7 天和 30 天的 token 图表，按场景、模型、每天、会话和任务拆开看，超过阈值会在页面上提示。"
+            "巡检日志在任务页导出。未登录不统计用量。"
+        ),
+    },
+    {
+        "id": "window",
+        "source": "内置帮助 · 窗口与快捷键",
+        "title": "窗口与快捷键",
+        "keywords": ["主题", "深色", "浅色", "悬浮窗", "窗口", "快捷键", "命令面板", "ctrl", "悬浮"],
+        "text": (
+            "模型页的「外观与窗口」可以切浅色、深色、跟随系统，也能开悬浮窗模式，把窗口缩成一小条贴在桌面最前面。"
+            "按 Ctrl + Alt + Space 弹命令面板，能直接问话，也能选语音输入、拍照识字、新建待办和生成导图。"
+        ),
+    },
+    {
+        "id": "data",
+        "source": "内置帮助 · 数据与迁移",
+        "title": "数据与迁移",
+        "keywords": ["数据", "在哪", "迁移", "换电脑", "备份", "清理", "数据库", "update", "更新"],
+        "text": (
+            "数据全在本机安装目录的 data 下：SQLite 数据库、uploads 上传文档、lancedb 向量索引、backup 备份。"
+            "换电脑用系统页的迁移向导导出 zip，再导入新机器；系统页还能手动检查更新。"
+            "卸载时选「保留数据」就不会动这些东西。"
+        ),
+    },
+    {
+        "id": "trouble",
+        "source": "内置帮助 · 常见问题",
+        "title": "常见问题",
+        "keywords": ["报错", "401", "429", "没结果", "失败", "卡住", "历史", "只剩", "乱码", "识别不出"],
+        "text": (
+            "模型报 401 是 key 不对或过期，去模型页换；报 429 是上游限流，等一会儿再试。"
+            "检索没结果就把文档删了重传，让索引重建。历史对话按会话分组，只显示当前会话名下的对话，"
+            "切回旧会话或用搜索框找标题。OCR 认不出来就换张清楚点的图，本地识别不联网。"
+        ),
+    },
+]
+
+GUIDE = [
+    {"key": "model", "title": "先登录", "body": "去「模型」页点一下「登录」，本机登录不联网，之后想用自己的 key 再在同一页换。", "page": "settings"},
+    {"key": "chat", "title": "问第一句", "body": "直接打字问，Enter 发送。回答下面能看到用到的资料。", "page": "chat"},
+    {"key": "todo", "title": "记件待办", "body": "「待办」页输一句话，比如「明早九点取快递」，它会自动拆好时间。", "page": "todo"},
+    {"key": "rag", "title": "传份资料", "body": "「资料」页拖文件进去，建好索引后对话会自动检索。", "page": "knowledge"},
+    {"key": "task", "title": "挂个任务", "body": "想让它在后台盯事情，去「任务」页新建，填网址就按页面变化提醒。", "page": "tasks"},
+    {"key": "tier", "title": "看看能用多少", "body": "「模型」页能看到当前是未登录还是已登录，以及任务、资料、笔记的额度。", "page": "settings"},
+]
+
+
+def markdown() -> str:
+    """拼成帮助页显示的 Markdown，和工具检索共用同一份内容。"""
+    out = ["## 开始用", "", "1. 到「模型」页点「登录」；未登录只能用免费模型。", "2. 回「对话」问第一句，确认能通。", "3. 要认你的资料，去「资料」页传文档。", ""]
+    out.append("## 常用功能")
+    out.append("")
+    for s in SECTIONS:
+        if s["id"] in ("start", "pages", "trouble"):
+            continue
+        out.append(f"- **{s['title']}**：{s['text']}")
+    out += ["", "## 数据在哪", "", "数据全在本机安装目录的 data 下：SQLite 数据库、uploads 上传文档、lancedb 向量索引、backup 备份。", ""]
+    out.append("## 卡住了")
+    out.append("")
+    trouble = next(s for s in SECTIONS if s["id"] == "trouble")
+    for line in trouble["text"].split("。"):
+        if line.strip():
+            out.append(f"- {line.strip()}。")
+    return "\n".join(out) + "\n"
+
+
+def guide_items() -> list[dict[str, str]]:
+    return [dict(x) for x in GUIDE]
+
+
+def search(query: str, top_k: int = 4) -> list[dict[str, Any]]:
+    """关键词 + 中文二元组打分，够用了，不为了这点文档再装一套分词。"""
+    q = (query or "").lower()
+    if not q.strip():
+        return []
+    grams = _grams(q)
+    result = []
+    for s in SECTIONS:
+        words = [w.lower() for w in s["keywords"]]
+        hit = sum(3 for w in words if w and w in q)
+        hit += sum(2 for w in words if len(w) > 1 and w in s["title"] and w in q)
+        found = _grams(s["title"] + " " + " ".join(words) + " " + s["text"])
+        hit += len(grams & found)
+        if hit:
+            result.append(
+                {
+                    "source": s["source"],
+                    "title": s["title"],
+                    "text": s["text"],
+                    "score": hit,
+                }
+            )
+    result.sort(key=lambda x: -x["score"])
+    if not result:
+        # 问得太泛就把总览给出来，总比空着手强
+        s = next(x for x in SECTIONS if x["id"] == "pages")
+        result = [{"source": s["source"], "title": s["title"], "text": s["text"], "score": 0}]
+    return result[: max(1, min(int(top_k or 4), 6))]
+
+
+def _grams(text: str) -> set[str]:
+    parts = re.findall(r"[\u4e00-\u9fff]{2,}|[a-z0-9]+", text.lower())
+    out: set[str] = set()
+    for part in parts:
+        if part.isascii():
+            out.add(part)
+            continue
+        out.add(part)
+        out.update(part[i : i + 2] for i in range(len(part) - 1))
+    return out
