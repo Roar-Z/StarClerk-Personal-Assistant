@@ -395,8 +395,10 @@ export const api = {
   studyLogs: (limit = 50) => req<{ items: { at: number; status: string; reason: string; new: number; detail: string }[] }>(`/study/logs?limit=${limit}`),
   studyTerm: () => req<{ date: string }>('/study/term'),
   studySaveTerm: (date: string) => req<{ ok: boolean; date: string }>('/study/term', { method: 'POST', body: JSON.stringify({ date }) }),
-  studySchedulePreview: () => req<{ items: { name: string; teacher: string; room: string; day: number; s1: number; s2: number; w1: number; w2: number }[]; count: number; can_fetch: boolean }>('/study/schedule/preview'),
-  studyScheduleExport: () => download('/study/schedule/export'),
+  studySchedulePreview: (weeks = 20, force = false) =>
+    req<{ items: { name: string; teacher: string; room: string; week: number; day: number; s1: number; s2: number }[]; count: number; can_fetch: boolean; cached: boolean }>(`/study/schedule/preview?weeks=${weeks}&force=${force}`),
+  studyScheduleExport: (weeks = 20) => download(`/study/schedule/export?weeks=${weeks}`),
+  studyScheduleClearCache: () => req<{ ok: boolean }>('/study/schedule/cache', { method: 'POST' }),
 
   // 专注番茄钟
   focusStatus: (days = 7) =>

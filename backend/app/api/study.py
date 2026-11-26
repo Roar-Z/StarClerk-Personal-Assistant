@@ -33,6 +33,7 @@ def status():
         "slots": ["12:40", "19:00", "22:00"],
         "term_start": schedule.term_start(),
         "schedule_can_fetch": schedule.can_fetch(),
+        "schedule_cached": bool(schedule.cached()),
     }
 
 
@@ -112,10 +113,10 @@ def save_term(body: TermIn):
 
 
 @router.get("/schedule/preview", summary="预览课表（点导出才读，有间隔限制）")
-def schedule_preview():
+def schedule_preview(weeks: int = 20, force: bool = False):
     access.require("study")
     try:
-        items = schedule.fetch()
+        items = schedule.fetch(weeks, force)
     except schedule.TooFrequent as e:
         raise HTTPException(429, str(e)) from e
     except chaoxing.SessionExpired as e:
@@ -125,17 +126,24 @@ def schedule_preview():
     except Exception as e:  # noqa: BLE001
         raise HTTPException(502, f"读课表失败：{e}") from e
     store.add_log("schedule", "预览课表", new=len(items))
-    return {"items": items, "count": len(items), "can_fetch": schedule.can_fetch()}
+    return {"items": items, "count": len(items), "can_fetch": schedule.can_fetch(), "cached": bool(schedule.cached())}
+
+
+@router.post("/schedule/cache", summary="清掉课表缓存，下次重新读")
+def clear_schedule_cache():
+    access.require("study")
+    schedule.clear_cache()
+    return {"ok": True}
 
 
 @router.get("/schedule/export", summary="导出课表日历（.ics）")
-def schedule_export():
+def schedule_export(weeks: int = 20):
     access.require("study")
     start = schedule.term_start()
     if not start:
         raise HTTPException(400, "请先填学期第一周周一的日期")
     try:
-        items = schedule.fetch()
+        items = schedule.fetch(weeks)
     except schedule.TooFrequent as e:
         raise HTTPException(429, str(e)) from e
     except chaoxing.SessionExpired as e:
