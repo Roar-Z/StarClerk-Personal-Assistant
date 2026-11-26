@@ -1,16 +1,25 @@
-"""学习空间接口：学习通扫码登录、总开关、状态与日志。
+"""学习空间接口：学习通扫码登录、总开关、状态与日志、课表导出。
 
-没有手动刷新入口——同步只由首次登录和每天三个固定点触发。
+作业同步没有手动刷新入口——只由首次登录和每天三个固定点触发。
 """
 from __future__ import annotations
 
+import time
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
 
 from .. import access
-from ..study import chaoxing, store
+from ..study import chaoxing, schedule, store
 from ..tasks.study_sync import study_sync
 
 router = APIRouter(prefix="/study", tags=["study"])
+
+
+class TermIn(BaseModel):
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 @router.get("/status", summary="学习空间状态")
@@ -22,6 +31,8 @@ def status():
         "last_sync": store.last_sync(),
         "logs": store.logs()[:50],
         "slots": ["12:40", "19:00", "22:00"],
+        "term_start": schedule.term_start(),
+        "schedule_can_fetch": schedule.can_fetch(),
     }
 
 
@@ -84,3 +95,60 @@ def logout():
 def get_logs(limit: int = 50):
     access.require("study")
     return {"items": store.logs()[: max(1, min(limit, 300))]}
+
+
+# ---------------- 课表日历导出 ----------------
+@router.get("/term", summary="读学期开始日期")
+def get_term():
+    access.require("study")
+    return {"date": schedule.term_start()}
+
+
+@router.post("/term", summary="保存学期第一周周一的日期")
+def save_term(body: TermIn):
+    access.require("study")
+    schedule.set_term_start(body.date)
+    return {"ok": True, "date": body.date}
+
+
+@router.get("/schedule/preview", summary="预览课表（点导出才读，有间隔限制）")
+def schedule_preview():
+    access.require("study")
+    try:
+        items = schedule.fetch()
+    except schedule.TooFrequent as e:
+        raise HTTPException(429, str(e)) from e
+    except chaoxing.SessionExpired as e:
+        raise HTTPException(401, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"读课表失败：{e}") from e
+    store.add_log("schedule", "预览课表", new=len(items))
+    return {"items": items, "count": len(items), "can_fetch": schedule.can_fetch()}
+
+
+@router.get("/schedule/export", summary="导出课表日历（.ics）")
+def schedule_export():
+    access.require("study")
+    start = schedule.term_start()
+    if not start:
+        raise HTTPException(400, "请先填学期第一周周一的日期")
+    try:
+        items = schedule.fetch()
+    except schedule.TooFrequent as e:
+        raise HTTPException(429, str(e)) from e
+    except chaoxing.SessionExpired as e:
+        raise HTTPException(401, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"读课表失败：{e}") from e
+    ics = schedule.to_ics(items, start)
+    store.add_log("schedule", "导出课表日历", new=len(items))
+    name = f"schedule-{time.strftime('%Y%m%d')}.ics"
+    return Response(
+        content="\ufeff" + ics,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )

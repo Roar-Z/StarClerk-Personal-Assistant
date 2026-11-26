@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
 import FocusTimer from '../components/FocusTimer.vue'
+import ScheduleExport from '../components/ScheduleExport.vue'
 
 type LogItem = { at: number; status: string; reason: string; new: number; detail: string }
 
@@ -212,6 +213,7 @@ onUnmounted(() => {
         </section>
 
         <FocusTimer />
+        <ScheduleExport />
       </div>
     </div>
 

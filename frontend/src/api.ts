@@ -393,6 +393,10 @@ export const api = {
     req<{ status: string }>(`/study/qr/check?key=${encodeURIComponent(key)}`, { method: 'POST' }),
   studyLogout: () => req<{ ok: boolean }>('/study/logout', { method: 'POST' }),
   studyLogs: (limit = 50) => req<{ items: { at: number; status: string; reason: string; new: number; detail: string }[] }>(`/study/logs?limit=${limit}`),
+  studyTerm: () => req<{ date: string }>('/study/term'),
+  studySaveTerm: (date: string) => req<{ ok: boolean; date: string }>('/study/term', { method: 'POST', body: JSON.stringify({ date }) }),
+  studySchedulePreview: () => req<{ items: { name: string; teacher: string; room: string; day: number; s1: number; s2: number; w1: number; w2: number }[]; count: number; can_fetch: boolean }>('/study/schedule/preview'),
+  studyScheduleExport: () => download('/study/schedule/export'),
 
   // 专注番茄钟
   focusStatus: (days = 7) =>
