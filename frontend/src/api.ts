@@ -346,6 +346,9 @@ export const api = {
   saveTodo: (id: string, body: Partial<Todo>) =>
     req<{ item: Todo }>(`/todos/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   finishTodo: (id: string) => req<{ ok: boolean; next: Todo | null }>(`/todos/${id}/done`, { method: 'POST' }),
+  ackReminder: (id: string) => req(`/todos/${id}/remind/ack`, { method: 'POST' }),
+  dismissReminder: (id: string, stage: number) =>
+    req(`/todos/${id}/remind/dismiss?stage=${stage}`, { method: 'POST' }),
   delTodo: (id: string) => req(`/todos/${id}`, { method: 'DELETE' }),
   todoConflicts: (due_at: number, end_at: number, exclude = '') =>
     req<{ items: Todo[] }>(

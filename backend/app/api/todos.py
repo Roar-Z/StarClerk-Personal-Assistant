@@ -94,7 +94,7 @@ def update(tid: str, body: TodoIn):
     remind = due - max(0, body.lead_minutes) * 60 if due else None
     db.exec_sql(
         "UPDATE todos SET title=?,note=?,due_at=?,end_at=?,priority=?,tags=?,repeat=?,lead_minutes=?,"
-        "remind_at=?,reminded=0,updated_at=? WHERE id=?",
+        "remind_at=?,reminded=0,ack=0,ack_at=NULL,updated_at=? WHERE id=?",
         (
             body.title.strip(),
             body.note.strip(),
@@ -109,6 +109,8 @@ def update(tid: str, body: TodoIn):
             tid,
         ),
     )
+    # 时间一改，之前发过的阶段作废，按新时间重新提醒
+    db.exec_sql("DELETE FROM todo_reminders WHERE todo_id=?", (tid,))
     row = db.row("SELECT * FROM todos WHERE id=?", (tid,)) or {}
     return {"item": _row_out(row)}
 
@@ -128,7 +130,7 @@ def finish(tid: str):
         lead = int(old.get("lead_minutes") or 0)
         db.exec_sql(
             "INSERT INTO todos(id,title,note,due_at,end_at,priority,tags,repeat,lead_minutes,remind_at,"
-            "reminded,done,done_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,0,0,NULL,?,?)",
+            "reminded,ack,ack_at,done,done_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,0,0,NULL,0,NULL,?,?)",
             (
                 nid,
                 old["title"],
@@ -148,9 +150,27 @@ def finish(tid: str):
     return {"ok": True, "next": new_item}
 
 
+@router.post("/{tid}/remind/ack", summary="确认提醒，后面几档都不再弹")
+def remind_ack(tid: str):
+    t = db.now()
+    db.exec_sql("UPDATE todos SET ack=1, ack_at=?, updated_at=? WHERE id=?", (t, t, tid))
+    db.exec_sql("UPDATE todo_reminders SET action='ack' WHERE todo_id=?", (tid,))
+    return {"ok": True}
+
+
+@router.post("/{tid}/remind/dismiss", summary="只关当前这档，后面照常提醒")
+def remind_dismiss(tid: str, stage: int = Query(ge=1, le=3)):
+    db.exec_sql(
+        "UPDATE todo_reminders SET action='dismiss' WHERE todo_id=? AND stage=? AND action=''",
+        (tid, stage),
+    )
+    return {"ok": True}
+
+
 @router.delete("/{tid}", summary="删待办")
 def remove(tid: str):
     db.exec_sql("DELETE FROM todos WHERE id=?", (tid,))
+    db.exec_sql("DELETE FROM todo_reminders WHERE todo_id=?", (tid,))
     return {"ok": True}
 
 

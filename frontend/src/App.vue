@@ -16,6 +16,7 @@ import SkillsView from './views/SkillsView.vue'
 import TodoView from './views/TodoView.vue'
 import ScanView from './views/ScanView.vue'
 import CommandPalette from './components/CommandPalette.vue'
+import ReminderToast, { type ReminderItem } from './components/ReminderToast.vue'
 import HelpView from './views/HelpView.vue'
 import MigrateView from './views/MigrateView.vue'
 import { loadLicense, loadSessions, me } from './store'
@@ -156,6 +157,25 @@ function runCommand(key: string, text?: string) {
   window.setTimeout(() => window.dispatchEvent(new CustomEvent(name, text ? { detail: text } : undefined)), 40)
 }
 
+// 右下角待办提醒卡片，和托盘气泡不是一套；确认会停掉后续阶段，关闭只关当前
+const reminders = ref<ReminderItem[]>([])
+async function ackReminder(item: ReminderItem) {
+  reminders.value = reminders.value.filter((x) => x.todo_id !== item.todo_id)
+  try {
+    await api.ackReminder(item.todo_id)
+  } catch {
+    /* 后端没连上也先把卡片收了 */
+  }
+}
+async function closeReminder(item: ReminderItem) {
+  reminders.value = reminders.value.filter((x) => x.event_id !== item.event_id)
+  try {
+    await api.dismissReminder(item.todo_id, item.stage)
+  } catch {
+    /* 同上 */
+  }
+}
+
 /** 托盘/快捷键唤起时后端会调它，直接跳对话页 */
 function bindEvents() {
   const es = new EventSource('/api/events')
@@ -163,6 +183,10 @@ function bindEvents() {
     const ev = JSON.parse(e.data)
     if (ev.type === 'command') {
       paletteOpen.value = true
+      return
+    }
+    if (ev.type === 'todo_reminder') {
+      if (!reminders.value.some((x) => x.event_id === ev.event_id)) reminders.value.push(ev)
       return
     }
     if (ev.type !== 'notify') return
@@ -268,5 +292,6 @@ onMounted(async () => {
     </div>
 
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" @run="runCommand" />
+    <ReminderToast :items="reminders" @ack="ackReminder" @close="closeReminder" />
   </div>
 </template>

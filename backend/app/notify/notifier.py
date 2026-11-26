@@ -69,6 +69,11 @@ def command() -> None:
     _emit({"type": "command"})
 
 
+def todo_reminder(payload: dict) -> None:
+    """待办梯度提醒：前端右下角卡片，带确认/关闭两个按钮。"""
+    _emit({"type": "todo_reminder", **payload})
+
+
 def drain_pending() -> None:
     while not _pending.empty():
         _push(_pending.get_nowait())

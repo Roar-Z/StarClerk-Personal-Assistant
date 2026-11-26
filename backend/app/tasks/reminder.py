@@ -1,17 +1,23 @@
-"""待办提醒子线程：每 30 秒扫一遍到点的待办，走统一的托盘 + SSE 提醒出口。
+"""待办梯度提醒：提前 30 分钟、临近（出门预留/10 分钟）、到点，一共三次。
 
-提醒过一次就打标记，不重复轰炸；日程改了时间会把标记清掉重新算。
+每个阶段只发一次；点「已确认」就停掉这条待办后面所有阶段，
+点「关闭」只记当前阶段关了，后面的照发；没人点 10 分钟后前端自动收起，也不影响后面。
 """
 from __future__ import annotations
 
 import logging
 import threading
+from datetime import datetime
 from typing import Any
 
-from .. import license, notify
+from .. import license
 from ..db import sqlite as db
+from ..notify import notifier
 
 log = logging.getLogger("reminder")
+
+STAGE_LABELS = {1: "提前半小时", 2: "快到时间了", 3: "到点了"}
+STAGE_LEVELS = {1: "info", 2: "warn", 3: "urgent"}
 
 
 class TodoReminder:
@@ -43,24 +49,52 @@ class TodoReminder:
             if self._stop.wait(self.interval):
                 break
 
+    @staticmethod
+    def _stages(lead: int) -> list[tuple[int, float]]:
+        """返回阶段和提前多少分钟；出门预留填了就用它当第二阶段。"""
+        second = lead if lead and 0 < lead < 30 else 10
+        return [(1, 30.0), (2, float(second)), (3, 0.0)]
+
     def tick(self) -> list[dict[str, Any]]:
         if license.is_guest():
             return []
         now = db.now()
         rows = db.rows(
-            "SELECT * FROM todos WHERE done=0 AND reminded=0 AND remind_at IS NOT NULL AND remind_at<=? "
-            "ORDER BY remind_at LIMIT 50",
-            (now,),
+            "SELECT * FROM todos WHERE done=0 AND ack=0 AND due_at IS NOT NULL "
+            "AND due_at<=? ORDER BY due_at LIMIT 100",
+            (now + 31 * 60,),
         )
         sent = []
         for r in rows:
-            title = "该出门了" if int(r.get("lead_minutes") or 0) > 0 else "待办提醒"
-            body = r["title"]
-            if r.get("note"):
-                body += " · " + str(r["note"])[:60]
-            notify.notify(title, body, "warn" if r.get("priority") == "high" else "info")
-            db.exec_sql("UPDATE todos SET reminded=1 WHERE id=?", (r["id"],))
-            sent.append(r)
+            due = float(r["due_at"])
+            for stage, minutes in self._stages(int(r.get("lead_minutes") or 0)):
+                at = due - minutes * 60
+                if at > now:
+                    continue
+                if at < float(r.get("created_at") or 0) - 30:
+                    continue  # 新建时早就过了这个点，别补发一堆过期提醒
+                added = db.exec_rowcount(
+                    "INSERT OR IGNORE INTO todo_reminders(todo_id, stage, sent_at) VALUES(?,?,?)",
+                    (r["id"], stage, now),
+                )
+                if not added:
+                    continue
+                when = datetime.fromtimestamp(due).strftime("%Y年%m月%d日 %H:%M:%S")
+                body = f"{r['title']} · {when}"
+                if r.get("note"):
+                    body += f" · {str(r['note'])[:60]}"
+                notifier.todo_reminder(
+                    {
+                        "event_id": f"{r['id']}-{stage}",
+                        "todo_id": r["id"],
+                        "stage": stage,
+                        "title": STAGE_LABELS[stage],
+                        "body": body,
+                        "level": STAGE_LEVELS[stage],
+                        "due_at": due,
+                    }
+                )
+                sent.append({"id": r["id"], "stage": stage})
         return sent
 
 

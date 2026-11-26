@@ -65,9 +65,13 @@ CREATE TABLE IF NOT EXISTS todos(
   due_at REAL, end_at REAL, priority TEXT NOT NULL DEFAULT 'normal',
   tags TEXT NOT NULL DEFAULT '', repeat TEXT NOT NULL DEFAULT 'once',
   lead_minutes INTEGER NOT NULL DEFAULT 0, remind_at REAL,
-  reminded INTEGER NOT NULL DEFAULT 0, done INTEGER NOT NULL DEFAULT 0, done_at REAL,
+  reminded INTEGER NOT NULL DEFAULT 0, ack INTEGER NOT NULL DEFAULT 0, ack_at REAL,
+  done INTEGER NOT NULL DEFAULT 0, done_at REAL,
   created_at REAL NOT NULL, updated_at REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_todos_due ON todos(due_at);
+CREATE TABLE IF NOT EXISTS todo_reminders(
+  todo_id TEXT NOT NULL, stage INTEGER NOT NULL, sent_at REAL NOT NULL,
+  action TEXT NOT NULL DEFAULT '', PRIMARY KEY(todo_id, stage));
 """
 
 
@@ -99,6 +103,8 @@ def _add_columns(c: sqlite3.Connection) -> None:
         ("tasks", "last_value", "TEXT NOT NULL DEFAULT ''"),
         ("usage", "session_id", "TEXT NOT NULL DEFAULT ''"),
         ("usage", "task_id", "TEXT NOT NULL DEFAULT ''"),
+        ("todos", "ack", "INTEGER NOT NULL DEFAULT 0"),
+        ("todos", "ack_at", "REAL"),
     ):
         have = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
         if column not in have:
