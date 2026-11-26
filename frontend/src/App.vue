@@ -14,6 +14,7 @@ import SystemView from './views/SystemView.vue'
 import NotesView from './views/NotesView.vue'
 import SkillsView from './views/SkillsView.vue'
 import TodoView from './views/TodoView.vue'
+import StudyView from './views/StudyView.vue'
 import ScanView from './views/ScanView.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import ReminderToast, { type ReminderItem } from './components/ReminderToast.vue'
@@ -30,6 +31,7 @@ type Tab =
   | 'notes'
   | 'skills'
   | 'todos'
+  | 'study'
   | 'scan'
   | 'model'
   | 'usage'
@@ -53,6 +55,7 @@ function syncFromHash() {
 const tabs = [
   { key: 'chat', icon: 'chat', label: '对话', min: 'guest', group: '工作台' },
   { key: 'todos', icon: 'todo', label: '待办', min: 'free', group: '工作台' },
+  { key: 'study', icon: 'book', label: '学习', min: 'free', group: '工作台' },
   { key: 'tasks', icon: 'tasks', label: '任务', min: 'free', group: '工作台' },
   { key: 'scan', icon: 'image', label: '扫描', min: 'guest', group: '工作台' },
   { key: 'memory', icon: 'memory', label: '记忆', min: 'free', group: '工作台' },
@@ -189,6 +192,12 @@ function bindEvents() {
       if (!reminders.value.some((x) => x.event_id === ev.event_id)) reminders.value.push(ev)
       return
     }
+    if (ev.type === 'study_session_expired') {
+      tab.value = 'study'
+      // 等页面挂上再发，不然没人接这个事件
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent('sc:study-expired', { detail: ev.reason || '' })), 120)
+      return
+    }
     if (ev.type !== 'notify') return
     ElNotification({
       title: ev.title,
@@ -257,6 +266,7 @@ onMounted(async () => {
             @go="tab = 'model'"
           />
           <TodoView v-else-if="tab === 'todos'" />
+          <StudyView v-else-if="tab === 'study'" />
           <TasksView v-else-if="tab === 'tasks'" />
           <ScanView v-else-if="tab === 'scan'" />
           <MemoryView v-else-if="tab === 'memory'" />

@@ -74,6 +74,11 @@ def todo_reminder(payload: dict) -> None:
     _emit({"type": "todo_reminder", **payload})
 
 
+def study_session_expired(reason: str = "") -> None:
+    """学习通会话失效：前端弹模态框，必须重新扫码，不能静默掉。"""
+    _emit({"type": "study_session_expired", "reason": reason})
+
+
 def drain_pending() -> None:
     while not _pending.empty():
         _push(_pending.get_nowait())

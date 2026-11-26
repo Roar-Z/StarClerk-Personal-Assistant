@@ -20,6 +20,7 @@ from .log import setup as setup_log
 from .notify import notifier
 from .tasks.reminder import reminder
 from .tasks.scheduler import runner
+from .tasks.study_sync import study_sync
 
 setup_log()
 log = logging.getLogger("main")
@@ -33,6 +34,7 @@ async def lifespan(_: FastAPI):
     if settings.scheduler_enabled:
         runner.start()
     reminder.start()
+    study_sync.start()
     info = license.info()
     log.info(
         "StarClerk 就绪：http://%s:%s（%s，并发上限 %s）",
@@ -42,6 +44,7 @@ async def lifespan(_: FastAPI):
         info["max_concurrency"],
     )
     yield
+    study_sync.stop()
     reminder.stop()
     runner.stop()
     log.info("StarClerk 已停止")

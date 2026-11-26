@@ -356,6 +356,26 @@ export const api = {
     ),
   exportTodos: (fmt: 'csv' | 'ics') => download(`/todos/export?fmt=${fmt}&done=all`),
 
+  // 学习空间：学习通三时段作业提醒
+  studyStatus: () =>
+    req<{
+      enabled: boolean
+      cookie: { logged_in: boolean; at: number }
+      exams: { name: string; start: number; end: number }[]
+      last_sync: { at: number; status: string; new: number; reason: string }
+      logs: { at: number; status: string; reason: string; new: number; detail: string }[]
+      slots: string[]
+    }>('/study/status'),
+  studyEnable: () => req<{ ok: boolean; enabled: boolean }>('/study/enable', { method: 'POST' }),
+  studyDisable: () => req<{ ok: boolean; enabled: boolean }>('/study/disable', { method: 'POST' }),
+  studyQrStart: () => req<{ key: string; image: string }>('/study/qr/start', { method: 'POST' }),
+  studyQrCheck: (key: string) =>
+    req<{ status: string }>(`/study/qr/check?key=${encodeURIComponent(key)}`, { method: 'POST' }),
+  studyLogout: () => req<{ ok: boolean }>('/study/logout', { method: 'POST' }),
+  studySaveExams: (items: { name: string; start: number; end: number }[]) =>
+    req<{ ok: boolean }>('/study/exams', { method: 'POST', body: JSON.stringify({ items }) }),
+  studyLogs: (limit = 50) => req<{ items: { at: number; status: string; reason: string; new: number; detail: string }[] }>(`/study/logs?limit=${limit}`),
+
   // 本地 OCR + 采购清单
   ocrLocal: (image: string) =>
     req<{ text: string; lines: { text: string; score: number }[]; count: number }>('/ocr/local', {

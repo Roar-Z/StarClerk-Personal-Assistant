@@ -15,6 +15,7 @@
     stats    /api/stats      用量与异常
     config   /api/config     模型/向量配置
     system   /api/system     版本、日志、开机自启、清理、帮助
+    study    /api/study      学习空间：学习通扫码登录与三时段作业提醒
 """
 from __future__ import annotations
 
@@ -31,6 +32,7 @@ from . import (
     shopping,
     skills,
     stats,
+    study,
     todos,
     system,
     task,
@@ -50,6 +52,7 @@ routers = (
     migrate.router,
     license.router,
     stats.router,
+    study.router,
     config.router,
     system.router,
 )
@@ -68,6 +71,7 @@ __all__ = [
     "shopping",
     "skills",
     "stats",
+    "study",
     "system",
     "task",
     "todos",
