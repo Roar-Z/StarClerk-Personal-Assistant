@@ -69,8 +69,13 @@ async function turnOn() {
 }
 
 async function turnOff() {
+  try {
+    await ElMessageBox.confirm('停止后将退出学习通登录，所有自动请求都关掉。下次开启需要重新扫码。确定吗？', '', { type: 'warning' })
+  } catch {
+    return
+  }
   await api.studyDisable()
-  ElMessage.success('已停止访问学习通，所有自动请求都关了')
+  ElMessage.success('已退出，下次开启需重新扫码')
   await load()
 }
 

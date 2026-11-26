@@ -52,7 +52,8 @@ def enable():
 def disable():
     access.require("study")
     store.set_enabled(False)
-    store.add_log("off", "用户关闭总开关，停止全部自动请求")
+    store.set_cookie("")  # 退出登录，下次要重新扫码
+    store.add_log("off", "用户关闭总开关，已退出学习通，重新开启需再次扫码")
     return {"ok": True, "enabled": False}
 
 
