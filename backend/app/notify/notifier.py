@@ -56,7 +56,14 @@ def _emit(event: dict) -> None:
 def notify(title: str, body: str, level: str = "info") -> None:
     log.info("提醒：%s | %s", title, body)
     event = {"type": "notify", "level": level, "title": title, "body": body}
-    if _icon is not None:
+    # 专注时段不弹托盘气泡；SSE 照发，前端负责计数并集中提示
+    try:
+        from .. import focus
+
+        muted = bool(focus.session().get("active"))
+    except Exception:  # noqa: BLE001  配置没读出来就按不屏蔽处理
+        muted = False
+    if _icon is not None and not muted:
         try:
             _icon.notify(body[:200], title[:60])
         except Exception:  # noqa: BLE001  无托盘时忽略

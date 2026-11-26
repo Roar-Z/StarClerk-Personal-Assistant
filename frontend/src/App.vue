@@ -160,6 +160,23 @@ function runCommand(key: string, text?: string) {
   window.setTimeout(() => window.dispatchEvent(new CustomEvent(name, text ? { detail: text } : undefined)), 40)
 }
 
+// 专注模式下屏蔽所有悬浮窗消息，结束后统一补一条提示
+const focusActive = ref(false)
+const focusMuted = ref(0)
+function onFocusChange(e: Event) {
+  const was = focusActive.value
+  focusActive.value = !!(e as CustomEvent).detail
+  if (was && !focusActive.value && focusMuted.value) {
+    ElNotification({ title: '专注结束', message: `期间屏蔽了 ${focusMuted.value} 条消息`, type: 'info', duration: 6000, position: 'bottom-right' })
+    focusMuted.value = 0
+  }
+}
+function muteIfFocus(): boolean {
+  if (!focusActive.value) return false
+  focusMuted.value += 1
+  return true
+}
+
 // 右下角待办提醒卡片，和托盘气泡不是一套；确认会停掉后续阶段，关闭只关当前
 const reminders = ref<ReminderItem[]>([])
 async function ackReminder(item: ReminderItem) {
@@ -189,16 +206,19 @@ function bindEvents() {
       return
     }
     if (ev.type === 'todo_reminder') {
+      if (muteIfFocus()) return
       if (!reminders.value.some((x) => x.event_id === ev.event_id)) reminders.value.push(ev)
       return
     }
     if (ev.type === 'study_session_expired') {
+      if (muteIfFocus()) return
       tab.value = 'study'
       // 等页面挂上再发，不然没人接这个事件
       window.setTimeout(() => window.dispatchEvent(new CustomEvent('sc:study-expired', { detail: ev.reason || '' })), 120)
       return
     }
     if (ev.type !== 'notify') return
+    if (muteIfFocus()) return
     ElNotification({
       title: ev.title,
       message: ev.body,
@@ -216,11 +236,18 @@ onMounted(async () => {
   window.addEventListener('hashchange', syncFromHash)
   window.addEventListener('sc:theme', ((e: CustomEvent) => applyTheme(e.detail)) as EventListener)
   window.addEventListener('sc:float', ((e: CustomEvent) => (floatMode.value = !!e.detail)) as EventListener)
+  window.addEventListener('sc:focus-change', onFocusChange)
   applyTheme((localStorage.getItem('sc-theme') as ThemeMode) || 'light')
   window.addEventListener('sc:guide', () => {
     guideOpen.value = true
   })
   bindEvents()
+  // 启动时同步一次专注状态，关掉页面再开也不会漏屏蔽
+  try {
+    focusActive.value = (await api.focusStatus(1)).session?.active || false
+  } catch {
+    /* 后端没起来就先按没专注处理 */
+  }
   await loadLicense()
   await loadSessions()
   await loadGuide()

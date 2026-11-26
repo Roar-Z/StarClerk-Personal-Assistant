@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '../api'
+import FocusTimer from '../components/FocusTimer.vue'
 
 type LogItem = { at: number; status: string; reason: string; new: number; detail: string }
 
@@ -209,6 +210,8 @@ onUnmounted(() => {
             <p v-if="!logs.length" class="empty">还没有记录</p>
           </div>
         </section>
+
+        <FocusTimer />
       </div>
     </div>
 

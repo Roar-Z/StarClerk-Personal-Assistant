@@ -16,12 +16,14 @@
     config   /api/config     模型/向量配置
     system   /api/system     版本、日志、开机自启、清理、帮助
     study    /api/study      学习空间：学习通扫码登录与三时段作业提醒
+    focus    /api/focus      专注番茄钟与时长统计
 """
 from __future__ import annotations
 
 from . import (
     chat,
     config,
+    focus,
     license,
     memory,
     migrate,
@@ -40,6 +42,7 @@ from . import (
 
 routers = (
     chat.router,
+    focus.router,
     task.router,
     memory.router,
     rag.router,
@@ -60,6 +63,7 @@ routers = (
 __all__ = [
     "chat",
     "config",
+    "focus",
     "license",
     "memory",
     "migrate",

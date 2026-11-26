@@ -2,6 +2,27 @@ import { ElMessage } from 'element-plus'
 
 const BASE = '/api'
 
+export interface FocusSession {
+  active: boolean
+  mode: string
+  minutes: number
+  started_at: number
+  end_at: number
+  paused_at: number
+  paused_total: number
+  ended_at?: number
+  last_complete?: boolean
+}
+export interface FocusStats {
+  today_minutes: number
+  today_count: number
+  total_minutes: number
+  total_count: number
+  streak: number
+  daily: { date: string; minutes: number; count: number }[]
+  defaults: { focus: number; short: number; long: number; long_every: number }
+}
+
 export interface Msg {
   id: string
   role: 'user' | 'assistant'
@@ -372,6 +393,15 @@ export const api = {
     req<{ status: string }>(`/study/qr/check?key=${encodeURIComponent(key)}`, { method: 'POST' }),
   studyLogout: () => req<{ ok: boolean }>('/study/logout', { method: 'POST' }),
   studyLogs: (limit = 50) => req<{ items: { at: number; status: string; reason: string; new: number; detail: string }[] }>(`/study/logs?limit=${limit}`),
+
+  // 专注番茄钟
+  focusStatus: (days = 7) =>
+    req<{ session: FocusSession; stats: FocusStats }>(`/focus/status?days=${days}`),
+  focusStart: (minutes: number, mode: string) =>
+    req<{ ok: boolean; session: FocusSession }>('/focus/start', { method: 'POST', body: JSON.stringify({ minutes, mode }) }),
+  focusPause: () => req<{ ok: boolean; session: FocusSession }>('/focus/pause', { method: 'POST' }),
+  focusResume: () => req<{ ok: boolean; session: FocusSession }>('/focus/resume', { method: 'POST' }),
+  focusStop: () => req<{ ok: boolean; session: FocusSession }>('/focus/stop', { method: 'POST' }),
 
   // 本地 OCR + 采购清单
   ocrLocal: (image: string) =>

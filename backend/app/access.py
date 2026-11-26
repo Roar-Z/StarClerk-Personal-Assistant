@@ -40,6 +40,7 @@ FEATURES: dict[str, str] = {
     "shopping": "free",  # 采购清单合并
     "todo": "free",  # 待办与日程
     "study": "free",  # 学习空间：学习通扫码作业提醒
+    "focus": "free",  # 专注番茄钟
 }
 
 # (方法, 路径前缀, 功能)；从上往下匹配，命中第一条就停
@@ -57,6 +58,7 @@ RULES: tuple[tuple[str, str, str], ...] = (
     ("*", "/api/shopping", "shopping"),
     ("*", "/api/todos", "todo"),
     ("*", "/api/study", "study"),
+    ("*", "/api/focus", "focus"),
     ("*", "/api/mindmap", "mindmap"),
     ("GET", "/api/tasks/logs/export", "log_export"),
     ("*", "/api/tasks/logs", "tasks"),
