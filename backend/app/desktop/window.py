@@ -12,7 +12,11 @@ import webbrowser
 log = logging.getLogger("window")
 
 _window = None
+_eas_window = None
 _origin = (0, 0)  # 拖动开始时的窗口左上角坐标
+
+# 教务导入用的门户地址，只做这一所学校
+EAS_URL = "https://portal.gdust.edu.cn"
 
 
 def _url() -> str:
@@ -49,6 +53,49 @@ class Bridge:
         if _window is None:
             return False
         _window.hide()
+        return True
+
+    def open_eas(self) -> bool:
+        """开一个独立窗口让用户自己登录教务门户、进课表页。"""
+        global _eas_window
+        try:
+            import webview
+        except Exception:  # noqa: BLE001
+            webbrowser.open(EAS_URL)
+            return False
+        if _eas_window is not None:
+            try:
+                _eas_window.show()
+                _eas_window.restore()
+                return True
+            except Exception:  # noqa: BLE001
+                _eas_window = None
+        x, y = _center(1180, 820)
+        _eas_window = webview.create_window(
+            "教务课表", EAS_URL,
+            width=1180, height=820, min_size=(900, 600), x=x, y=y,
+        )
+        return True
+
+    def grab_eas_html(self) -> str:
+        """读教务窗口当前页 HTML，只返回给前端解析，不上传任何地方。"""
+        if _eas_window is None:
+            return ""
+        try:
+            return str(_eas_window.evaluate_js("document.documentElement.outerHTML") or "")
+        except Exception as e:  # noqa: BLE001
+            log.warning("抓教务页 HTML 失败：%s", e)
+            return ""
+
+    def close_eas(self) -> bool:
+        global _eas_window
+        if _eas_window is None:
+            return False
+        try:
+            _eas_window.destroy()
+        except Exception:  # noqa: BLE001
+            pass
+        _eas_window = None
         return True
 
     def set_float(self, on: bool) -> bool:

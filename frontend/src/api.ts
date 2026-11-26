@@ -400,6 +400,14 @@ export const api = {
   studyScheduleExport: (weeks = 20) => download(`/study/schedule/export?weeks=${weeks}`),
   studyScheduleClearCache: () => req<{ ok: boolean }>('/study/schedule/cache', { method: 'POST' }),
 
+  // 教务课表导入（广东科技学院）
+  easInfo: () => req<{ school: string; portal: string; saved: { count: number; at: number }; term_start: string }>('/eas/info'),
+  easPreview: (html: string) => req<{ items: { name: string; teacher: string; room: string; day: number; s1: number; s2: number; w1: number; w2: number; parity: string }[]; count: number }>('/eas/preview', { method: 'POST', body: JSON.stringify({ html }) }),
+  easSave: (items: unknown[]) => req<{ ok: boolean; count: number }>('/eas/save', { method: 'POST', body: JSON.stringify({ items }) }),
+  easCourses: () => req<{ items: unknown[]; count: number; at: number }>('/eas/courses'),
+  easClear: () => req<{ ok: boolean }>('/eas/clear', { method: 'POST' }),
+  easExport: () => download('/eas/export'),
+
   // 专注番茄钟
   focusStatus: (days = 7) =>
     req<{ session: FocusSession; stats: FocusStats }>(`/focus/status?days=${days}`),

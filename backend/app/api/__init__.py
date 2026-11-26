@@ -17,12 +17,14 @@
     system   /api/system     版本、日志、开机自启、清理、帮助
     study    /api/study      学习空间：学习通扫码登录与三时段作业提醒
     focus    /api/focus      专注番茄钟与时长统计
+    eas      /api/eas        教务课表导入（广东科技学院）
 """
 from __future__ import annotations
 
 from . import (
     chat,
     config,
+    eas,
     focus,
     license,
     memory,
@@ -42,6 +44,7 @@ from . import (
 
 routers = (
     chat.router,
+    eas.router,
     focus.router,
     task.router,
     memory.router,
@@ -63,6 +66,7 @@ routers = (
 __all__ = [
     "chat",
     "config",
+    "eas",
     "focus",
     "license",
     "memory",
